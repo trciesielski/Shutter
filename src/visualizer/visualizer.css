@@ -75,3 +75,20 @@ html.visualizer-backdrop-active .music-visualizer .visualizer-maximize{backdrop-
 .music-visualizer.mode-neon .visualizer-vignette{opacity:.48}
 .visualizer-scene-backdrop .neon-spectrum-canvas{opacity:.78}
 @media(prefers-reduced-motion:reduce){.neon-spectrum-canvas{animation:none}}
+
+/* Distraction-free visualization: only controls, living audio scene and Shutter playback deck. */
+.visualizer-focus-toggle{display:grid;place-items:center;width:38px;height:38px;flex:none;border:1px solid rgba(160,135,210,.22);border-radius:12px;color:var(--text);background:rgba(104,81,175,.12)}
+.visualizer-focus-toggle[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+html.shutter-visual-focus .page-content>*:not(.music-visualizer){display:none!important}
+html.shutter-visual-focus .sidebar,
+html.shutter-visual-focus .main>.topbar{display:none!important}
+html.shutter-visual-focus .main{width:100%!important;margin:0!important}
+html.shutter-visual-focus .page-content{padding:0!important;margin:0!important;max-width:none!important}
+html.shutter-visual-focus .music-visualizer{position:fixed!important;top:calc(env(safe-area-inset-top,0px) + 12px)!important;left:12px!important;right:12px!important;width:auto!important;margin:0!important;z-index:40!important;pointer-events:none}
+html.shutter-visual-focus .music-visualizer .visualizer-head,
+html.shutter-visual-focus .music-visualizer .visualizer-diagnostic{pointer-events:auto}
+html.shutter-visual-focus .visualizer-scene-backdrop{opacity:1!important}
+html.shutter-visual-focus .music-visualizer .visualizer-head{display:flex!important;justify-content:space-between!important}
+html.shutter-visual-focus .music-visualizer .visualizer-mode select{max-width:155px}
+html.shutter-visual-focus .music-visualizer .visualizer-head-actions{gap:5px}
+@media(max-width:580px){html.shutter-visual-focus .music-visualizer .visualizer-head{padding:4px 2px 0!important}.visualizer-focus-toggle{width:35px;height:35px}}
