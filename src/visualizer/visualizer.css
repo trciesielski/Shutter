@@ -99,3 +99,8 @@ html.shutter-visual-focus .music-visualizer .visualizer-head-actions{gap:5px}
 .music-visualizer .visualizer-scene canvas.glass-shards-canvas,
 .visualizer-scene-backdrop canvas.glass-shards-canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .music-visualizer.mode-shards .visualizer-vignette{opacity:.30}
+
+/* Neon Pulse 360: WebGL scene in inline and full-screen modes. */
+.music-visualizer .visualizer-scene canvas.neon-pulse-canvas,
+.visualizer-scene-backdrop canvas.neon-pulse-canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.music-visualizer.mode-shards .visualizer-vignette{opacity:.22}
