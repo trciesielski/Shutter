@@ -13,7 +13,7 @@ function persisted(key,fallback){try{return JSON.parse(localStorage.getItem(key)
 
 export function useAudioEngine(){
  const decks=useRef([]),activeDeck=useRef(0),urls=useRef([]),latest=useRef({});
- const change=useRef(null),busy=useRef(false),fadeTimer=useRef(null),recorded=useRef(null);
+ const change=useRef(null),busy=useRef(false),fadeTimer=useRef(null),recorded=useRef(null),activeTrackId=useRef(null);
  const eq=useEqualizer(decks);
  const [files,setFiles]=useState([]),[index,setIndex]=useState(0),[state,setState]=useState('idle');
  const [seconds,setSeconds]=useState(0),[duration,setDuration]=useState(0),[volume,setVolume]=useState(.7),[error,setError]=useState('');
@@ -49,7 +49,7 @@ export function useAudioEngine(){
    });
    a.addEventListener('loadedmetadata',()=>{if(i===activeDeck.current)setDuration(Number.isFinite(a.duration)?a.duration:0)});
    a.addEventListener('durationchange',()=>{if(i===activeDeck.current)setDuration(Number.isFinite(a.duration)?a.duration:0)});
-   a.addEventListener('playing',()=>{if(i!==activeDeck.current)return;setState('playing');const info=latest.current,f=info.files[info.index];if(f&&recorded.current!==f.id){recorded.current=f.id;setHistory(recordListen(f))}});
+   a.addEventListener('playing',()=>{if(i!==activeDeck.current)return;setState('playing');const info=latest.current,f=info.files.find(x=>x.id===activeTrackId.current)||info.files[info.index];if(f&&recorded.current!==f.id){recorded.current=f.id;setHistory(recordListen(f))}});
    a.addEventListener('pause',()=>{if(i===activeDeck.current)setState(a.ended?'stopped':'paused')});
    a.addEventListener('waiting',()=>{if(i===activeDeck.current)setState('loading')});
    a.addEventListener('error',()=>{if(i===activeDeck.current){setError('Nie można odtworzyć tego formatu w tej przeglądarce.');setState('error')}});
@@ -61,7 +61,7 @@ export function useAudioEngine(){
    const restored=records.map(({blob,...meta})=>({...meta,url:URL.createObjectURL(blob)}));
    urls.current.push(...restored.map(f=>f.url));setFiles(restored);setQueueIds(restored.map(f=>f.id));
    const last=persisted(positionKey,null),idx=restored.findIndex(f=>f.id===last?.id);
-   if(idx>=0){setIndex(idx);pair[0].src=restored[idx].url;pair[0].load();pair[0].addEventListener('loadedmetadata',()=>{if(Number.isFinite(last.time)&&last.time>=0&&last.time<pair[0].duration){pair[0].currentTime=last.time;setSeconds(last.time)}},{once:true})}
+   if(idx>=0){setIndex(idx);activeTrackId.current=restored[idx].id;pair[0].src=restored[idx].url;pair[0].load();pair[0].addEventListener('loadedmetadata',()=>{if(Number.isFinite(last.time)&&last.time>=0&&last.time<pair[0].duration){pair[0].currentTime=last.time;setSeconds(last.time)}},{once:true})}
   }).catch(()=>{if(!disposed)setError('Nie można wczytać lokalnej biblioteki.')});
   return()=>{disposed=true;clearTimeout(fadeTimer.current);pair.forEach(a=>{a.pause();a.removeAttribute('src');a.load()});urls.current.forEach(URL.revokeObjectURL)};
  },[]);
@@ -84,9 +84,10 @@ export function useAudioEngine(){
    if(!standbyReady){target.src=f.url;target.load()}target.volume=volume;
    if(cross){eq.setDeck(currentDeck)}
    // Playback starts from the user's interaction; both decks share the same EQ graph.
+   activeTrackId.current=f.id;
    await target.play();
    if(cross){eq.mixDecks(currentDeck,targetDeck,info.transition);activeDeck.current=targetDeck;fadeTimer.current=setTimeout(()=>{old.pause();old.removeAttribute('src');old.load();busy.current=false},info.transition*1000+150)}else if(preloaded){activeDeck.current=targetDeck;old.removeAttribute('src');old.load()}
-   recorded.current=f.id;setHistory(recordListen(f));setIndex(at);setSeconds(0);setDuration(0);setState('playing');
+   if(recorded.current!==f.id){recorded.current=f.id;setHistory(recordListen(f))}setIndex(at);setSeconds(0);setDuration(0);setState('playing');
    if(!cross)busy.current=false;
   }catch(e){busy.current=false;if(cross){target.pause();eq.setDeck(currentDeck)}setState('paused');if(e.name!=='AbortError')setError('Nie można rozpocząć odtwarzania: '+e.message)}
  };
