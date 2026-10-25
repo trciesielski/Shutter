@@ -350,3 +350,35 @@
 @media(max-width:800px){
  .local-playlists.playlist-open .playlist-detail{max-height:calc(100dvh - 250px);min-height:180px}
 }
+
+/* PLAYLIST SCROLL V2: full viewport fixed layer, not part of scrolling document.
+   The glass player remains above it; only the track list scrolls. */
+.local-playlists.playlist-open{
+ position:fixed;z-index:25;
+ inset:80px 14px 125px 254px;
+ width:auto;max-width:none;margin:0;padding:0;
+ background:var(--bg);
+ display:flex;flex-direction:column;overflow:hidden;
+}
+.local-playlists.playlist-open .playlist-new{display:none}
+.local-playlists.playlist-open .playlist-detail{
+ display:flex;flex-direction:column;flex:1;
+ width:100%;height:100%;min-height:0;max-height:none;
+ overflow:hidden;padding:18px 20px;
+ background:var(--surface);border-radius:20px;
+}
+.local-playlists.playlist-open .playlist-detail-head,
+.local-playlists.playlist-open .playlist-detail>h2,
+.local-playlists.playlist-open .playlist-detail>p{flex:0 0 auto}
+.local-playlists.playlist-open .playlist-detail-scroll{
+ flex:1 1 auto;min-height:0;max-height:none;
+ overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+ touch-action:pan-y;-webkit-overflow-scrolling:touch;
+ padding:4px 3px 15px 0;
+}
+@media(max-width:1120px){.local-playlists.playlist-open{left:219px}}
+@media(max-width:800px){.local-playlists.playlist-open{inset:65px 12px calc(210px + env(safe-area-inset-bottom,0px)) 12px}}
+@media(max-width:510px){
+ .local-playlists.playlist-open{inset:65px 10px calc(210px + env(safe-area-inset-bottom,0px)) 10px}
+ .local-playlists.playlist-open .playlist-detail{padding:16px 14px;border-radius:18px}
+}
