@@ -382,3 +382,42 @@
  .local-playlists.playlist-open{inset:65px 10px calc(210px + env(safe-area-inset-bottom,0px)) 10px}
  .local-playlists.playlist-open .playlist-detail{padding:16px 14px;border-radius:18px}
 }
+
+/* GLASS EXPAND V2 — fill available viewport, never cap playlist to 48vh.
+   Header and transport remain stationary; only queue scrolls. */
+.shutter-glass.is-expanded{
+ top:calc(68px + env(safe-area-inset-top,0px));
+ bottom:calc(12px + env(safe-area-inset-bottom,0px));
+ height:auto;max-height:none;
+ display:flex;flex-direction:column;
+ z-index:40;
+}
+.shutter-glass.is-expanded .player-expanded-panel{
+ display:flex;flex-direction:column;flex:1 1 auto;
+ min-height:0;max-height:none!important;height:auto;
+ overflow:hidden!important;
+ padding:18px 20px 10px;
+}
+.shutter-glass.is-expanded .player-expanded-heading,
+.shutter-glass.is-expanded .player-expanded-tabs{flex:0 0 auto}
+.shutter-glass.is-expanded .player-expanded-tracks{
+ flex:1 1 auto;min-height:0;overflow-y:auto;
+ overscroll-behavior:contain;touch-action:pan-y;
+ -webkit-overflow-scrolling:touch;padding-bottom:12px;
+ align-content:start;
+}
+.shutter-glass.is-expanded .player-bar.player-bar-v5{
+ flex:0 0 auto;min-height:0;
+}
+@media(max-width:800px){
+ .shutter-glass.is-expanded{top:calc(64px + env(safe-area-inset-top,0px))}
+ .shutter-glass.is-expanded .player-expanded-panel{
+  max-height:none!important;padding:14px 16px 8px
+ }
+ .shutter-glass.is-expanded .player-expanded-heading h2{font-size:17px}
+ .shutter-glass.is-expanded .player-expanded-tracks>button{padding:7px 4px}
+}
+@media(max-height:650px){
+ .shutter-glass.is-expanded{top:calc(8px + env(safe-area-inset-top,0px))}
+ .shutter-glass.is-expanded .player-expanded-heading h2{font-size:15px;margin:4px 0}
+}
