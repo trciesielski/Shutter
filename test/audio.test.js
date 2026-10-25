@@ -1,4 +1,4 @@
-import {spectrumBands,spectrumEnergy} from '../src/audio/spectrumBands.js';
+import {spectrumBands,spectrumEnergy,pcmSpectrumBands} from '../src/audio/spectrumBands.js';
 import {resolveVisualMode,VISUAL_MODES} from '../src/visualizer/modes.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -87,4 +87,15 @@ test('Neon Spectrum PRO remains an explicit selectable visualizer mode',()=>{
  assert.ok(VISUAL_MODES.some(([id])=>id==='neon'));
  assert.equal(resolveVisualMode('neon',false,false),'neon');
  assert.equal(resolveVisualMode('neon',false,true),'neon');
+});
+
+test('PCM fallback derives frequency energy from actual nonzero signal and zero from silence',()=>{
+ const sampleRate=44100,n=2048;
+ const silent=pcmSpectrumBands(new Float32Array(n),sampleRate);
+ assert.ok(silent.every(v=>v===0));
+ const samples=Float32Array.from({length:n},(_,i)=>.20*Math.sin(2*Math.PI*130*i/sampleRate));
+ const live=pcmSpectrumBands(samples,sampleRate);
+ assert.equal(live.length,32);
+ assert.ok(live.some(v=>v>0),'measured PCM should produce nonzero bands');
+ assert.ok(spectrumEnergy(live).bass>spectrumEnergy(live).treble,'130 Hz bass should dominate treble');
 });
