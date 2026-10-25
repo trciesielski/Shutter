@@ -9,7 +9,7 @@ function stored(){try{const a=JSON.parse(localStorage.getItem(KEY)||'{}');return
 export function useEqualizer(decks){
  const [settings,setSettings]=useState(stored),[ready,setReady]=useState(false);
  const [compare,setCompare]=useState(false),[autoProtect,setAutoProtect]=useState(true);
- const graph=useRef(null),[bins,setBins]=useState(Array(32).fill(0));
+ const graph=useRef(null),[bins,setBins]=useState(Array(32).fill(0)),[signalStatus,setSignalStatus]=useState('inactive');
  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(settings))}catch{}},[settings]);
  const initialize=async()=>{
   if(graph.current)return graph.current;
@@ -23,9 +23,9 @@ export function useEqualizer(decks){
    const preamp=context.createGain(),filters=FREQUENCIES.map((f,i)=>{const b=context.createBiquadFilter();b.type=i===0?'lowshelf':i===9?'highshelf':'peaking';b.frequency.value=f;b.Q.value=1.05;return b});
    const analyser=context.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=.8;
    deckGains.forEach(gain=>gain.connect(preamp));filters.reduce((prev,node)=>{prev.connect(node);return node},preamp).connect(analyser);analyser.connect(context.destination);
-   graph.current={context,preamp,filters,analyser,deckGains};setReady(true);
+   graph.current={context,preamp,filters,analyser,deckGains};setReady(true);setSignalStatus('connected');
    return graph.current;
-  }catch(e){console.warn('Equalizer unavailable:',e);return null}
+  }catch(e){console.warn('Equalizer unavailable:',e);setSignalStatus('error');return null}
  };
  useEffect(()=>{const g=graph.current;if(!g)return;const t=g.context.currentTime;
   const boost=Math.max(0,...settings.gains),effective=autoProtect?Math.min(settings.preamp,-boost):settings.preamp;
@@ -51,5 +51,5 @@ export function useEqualizer(decks){
  const setPreamp=value=>setSettings(s=>({...s,preamp:clamp(value,-12,6)}));
  const applyPreset=name=>setSettings(s=>({...s,gains:[...(s.custom[name]||PRESETS[name]||PRESETS.Flat)],preset:name}));
  const savePreset=name=>{const clean=name.trim().slice(0,32);if(clean)setSettings(s=>({...s,custom:{...s.custom,[clean]:[...s.gains]},preset:clean}))};
- return {settings,bins,ready,activate,setDeck,mixDecks,setBand,setPreamp,applyPreset,savePreset,compare,setCompare,autoProtect,setAutoProtect,toggle:()=>setSettings(s=>({...s,enabled:!s.enabled}))};
+ return {settings,bins,ready,signalStatus,activate,setDeck,mixDecks,setBand,setPreamp,applyPreset,savePreset,compare,setCompare,autoProtect,setAutoProtect,toggle:()=>setSettings(s=>({...s,enabled:!s.enabled}))};
 }
