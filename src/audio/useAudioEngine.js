@@ -59,7 +59,7 @@ export function useAudioEngine(){
   readTracks().then(records=>{
    if(disposed)return;
    const restored=records.map(({blob,...meta})=>({...meta,url:URL.createObjectURL(blob)}));
-   urls.current.push(...restored.map(f=>f.url));setFiles(restored);setQueueIds(restored.map(f=>f.id));
+   urls.current.push(...restored.map(f=>f.url));setFiles(existing=>{const seen=new Set(existing.map(f=>f.id));return [...restored.filter(f=>!seen.has(f.id)),...existing]});setQueueIds(old=>[...restored.map(f=>f.id),...old.filter(id=>!restored.some(f=>f.id===id))]);
    const last=persisted(positionKey,null),idx=restored.findIndex(f=>f.id===last?.id);
    if(idx>=0){setIndex(idx);activeTrackId.current=restored[idx].id;pair[0].src=restored[idx].url;pair[0].load();pair[0].addEventListener('loadedmetadata',()=>{if(Number.isFinite(last.time)&&last.time>=0&&last.time<pair[0].duration){pair[0].currentTime=last.time;setSeconds(last.time)}},{once:true})}
   }).catch(()=>{if(!disposed)setError('Nie można wczytać lokalnej biblioteki.')});
@@ -117,6 +117,7 @@ export function useAudioEngine(){
  const next=()=>{const at=neighbor(false);if(at>=0)select(at)};
  const prev=()=>{const a=current();if(a&&a.currentTime>3){a.currentTime=0;return}const info=latest.current,order=orderOf(info),pos=order.indexOf(info.index);if(pos>0)select(order[pos-1],false)};
  const remove=async id=>{
+  if(busy.current)return;
   try{await removeTrack(id)}catch{setError('Nie można usunąć pliku.');return}
   const f=latest.current.files.find(x=>x.id===id);if(f?.url){URL.revokeObjectURL(f.url);urls.current=urls.current.filter(x=>x!==f.url)}
   const removedIndex=latest.current.files.findIndex(x=>x.id===id);
