@@ -19,10 +19,12 @@ uniform float u_bass;
 uniform float u_mid;
 uniform float u_high;
 uniform float u_beat;
-uniform float u_sustain[8];
-uniform float u_transient[8];
+uniform float u_sustain[12];
+uniform float u_transient[12];
 uniform float u_flux;
 uniform float u_centroid;
+uniform float u_voice;
+uniform float u_voiceAttack;
 
 #define PI 3.14159265359
 float hash(float n){return fract(sin(n*127.1)*43758.5453);}
@@ -38,14 +40,15 @@ void main(){
  float speed=u_time*.08*u_playing;
  float power=u_intensity;
  float bass=u_bass,mid=u_mid,hi=u_high,beat=u_beat;
- float sub=u_sustain[0],kick=u_transient[1],vocals=u_sustain[4],presence=u_sustain[6];
+ float sub=u_sustain[0],kick=u_transient[2],vocals=u_voice,presence=u_sustain[9];
+ float vocalAttack=u_voiceAttack;
  float movement=u_flux;
  vec3 magenta=vec3(1.,.08,.69),cyan=vec3(.035,.72,1.),purple=vec3(.52,.20,1.);
  vec3 c=vec3(.002,.004,.021);
  // Dark transparent atmosphere with bass-triggered illumination.
  c+=purple*(.018+.080*bass)*exp(-radius*4.)*power;
  c+=cyan*(.010+.036*mid)*exp(-length(uv-vec2(-.25,.17))*4.)*power;
- float ripple=.012*sin(8.*a+u_time*.42+mid*3.)*(.35+mid);
+ float ripple=.012*sin(8.*a+u_time*.42+mid*3.)*(.35+mid+vocalAttack*1.6);
  float inner=.18+beat*.10+sub*.045+ripple*(.25+vocals*2.);
  float corona=exp(-pow((radius-inner)/.045,2.));
  c+=mix(magenta,cyan,.5+.5*sin(a*1.8))*corona*(.045+.36*beat+.12*mid)*power;
@@ -54,7 +57,7 @@ void main(){
  // Multi-layer segmented concentric rings, luminous but not constant bands.
  for(int i=0;i<5;i++){
   float f=float(i);
-  float rr=.235+f*.053+beat*.05*(1.-f*.12)+u_sustain[i+1]*.042*sin(a*3.+f);
+  float rr=.235+f*.053+beat*.05*(1.-f*.12)+u_sustain[i*2+2]*.042*sin(a*3.+f);
   float ix=mod(floor(angular*(58.+f*12.))+f*6.,32.);
   float energy=band(ix);
   float shifted=a+speed*(mod(f,2.)<1.?1.:-1.)*(1.+f*.2);
@@ -72,7 +75,7 @@ void main(){
  float local=abs(fract(angular*sectors)-.5);
  float e=band(mod(id,32.));
  float start=.46;
- float height=(.004+.25*pow(e,1.25))*(.45+.35*beat+.4*u_sustain[int(mod(id,8.))])*power;
+ float height=(.004+.25*pow(e,1.25))*(.45+.35*beat+.4*u_sustain[int(mod(id,12.))])*power;
  float extent=smoothstep(start-.008,start+.005,radius)*(1.-smoothstep(start+height-.006,start+height+.006,radius));
  float ray=1.-smoothstep(.10,.44,local);
  vec3 hue=mix(cyan,magenta,.5+.5*sin(a*1.5+.8));
@@ -95,9 +98,9 @@ void main(){
   float f=float(j);
   float freq=band(mod(f*3.+floor(angular*18.),32.));
   float y0=(f-4.)*.008;
-  float wave=.048*sin(uv.x*(8.+f*.42)+u_time*.32*u_playing+f*.42)*(vocals*1.35+mid*.45+.02)+.019*sin(uv.x*19.+f*.85+hi*3.)*(hi+.1);
+  float wave=.048*sin(uv.x*(8.+f*.42)+u_time*.32*u_playing+f*.42)*(vocals*1.15+vocalAttack*.8+mid*.25+.02)+.019*sin(uv.x*19.+f*.85+hi*3.)*(hi+.1);
   float yy=uv.y-y0-wave;
-  float ribbon=line(yy,.0013)*(mid*.55+freq*.7+.045)+line(yy,.008)*(.04+freq*.12);
+  float ribbon=line(yy,.0013)*(mid*.55+freq*.7+.045)+line(yy,.008)*(.04+freq*.12+vocalAttack*.13);
   float fade=smoothstep(.17,.46,abs(uv.x))*(1.-smoothstep(.83,1.2,abs(uv.x)));
   c+=mix(cyan,magenta,f/8.)*ribbon*fade*power*.85;
  }
@@ -123,7 +126,7 @@ void main(){
  float rnd=hash(cell.x*73.+cell.y*19.);
  vec2 grid=fract(uv*52.)-.5;
  float spark=line(length(grid),.05)*(step(.993,rnd));
- c+=mix(cyan,magenta,rnd)*spark*(.02+hi*.45+u_transient[7]*2.5+presence*.75)*power;
+ c+=mix(cyan,magenta,rnd)*spark*(.02+hi*.45+u_transient[11]*2.5+presence*.75)*power;
  float vignette=1.-smoothstep(.53,1.12,radius);
  c*=vignette;
  // Filmic soft-knee highlight, preserve dark center.
@@ -150,7 +153,7 @@ export default function NeonSpectrum({bins=[],playing=false,intensity=65,onUnava
    gl.useProgram(program);const at=gl.getAttribLocation(program,'a_position');gl.enableVertexAttribArray(at);gl.vertexAttribPointer(at,2,gl.FLOAT,false,0,0);
   }catch(error){console.warn('Neon Spectrum WebGL unavailable',error);onUnavailable?.();return}
   const uniform=name=>gl.getUniformLocation(program,name);
-  const U={sustain:uniform('u_sustain[0]'),transient:uniform('u_transient[0]'),flux:uniform('u_flux'),centroid:uniform('u_centroid'),resolution:uniform('u_resolution'),time:uniform('u_time'),intensity:uniform('u_intensity'),playing:uniform('u_playing'),bins:uniform('u_bins[0]'),bass:uniform('u_bass'),mid:uniform('u_mid'),high:uniform('u_high'),beat:uniform('u_beat')};
+  const U={sustain:uniform('u_sustain[0]'),transient:uniform('u_transient[0]'),flux:uniform('u_flux'),centroid:uniform('u_centroid'),voice:uniform('u_voice'),voiceAttack:uniform('u_voiceAttack'),resolution:uniform('u_resolution'),time:uniform('u_time'),intensity:uniform('u_intensity'),playing:uniform('u_playing'),bins:uniform('u_bins[0]'),bass:uniform('u_bass'),mid:uniform('u_mid'),high:uniform('u_high'),beat:uniform('u_beat')};
   const smooth=new Float32Array(32);let dynamics=null;let previousRaw=null;
   const contextLost=e=>{e.preventDefault();cancelAnimationFrame(raf);onUnavailable?.()};
   el.addEventListener('webglcontextlost',contextLost,false);
@@ -164,15 +167,15 @@ export default function NeonSpectrum({bins=[],playing=false,intensity=65,onUnava
    dynamics=updateVisualDynamics(dynamics,features,dt);
    previousRaw=features.raw;
    for(let i=0;i<32;i++)smooth[i]+=(features.raw[i]-smooth[i])*(1-Math.exp(-dt/(features.raw[i]>smooth[i]?45:135)));
-   const bass=(dynamics.sustain[0]+dynamics.sustain[1]+dynamics.sustain[2])/3;
-   const mid=(dynamics.sustain[3]+dynamics.sustain[4]+dynamics.sustain[5])/3;
-   const high=(dynamics.sustain[6]+dynamics.sustain[7])/2;
+   const bass=(dynamics.sustain[0]+dynamics.sustain[1]+dynamics.sustain[2]+dynamics.sustain[3])/4;
+   const mid=(dynamics.sustain[4]+dynamics.sustain[5]+dynamics.sustain[6]+dynamics.sustain[7]+dynamics.sustain[8])/5;
+   const high=(dynamics.sustain[9]+dynamics.sustain[10]+dynamics.sustain[11])/3;
    const visualBeat=dynamics.beat;
    gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.useProgram(program);
    gl.uniform2f(U.resolution,w,h);gl.uniform1f(U.time,t/1000);gl.uniform1f(U.intensity,Math.max(.1,Math.min(1,inp.intensity/100)));
    gl.uniform1f(U.playing,inp.playing&&!inp.reduced?1:0);gl.uniform1fv(U.bins,smooth);
    gl.uniform1f(U.bass,bass);gl.uniform1f(U.mid,mid);gl.uniform1f(U.high,high);gl.uniform1f(U.beat,visualBeat);
-   gl.uniform1fv(U.sustain,new Float32Array(dynamics.sustain));gl.uniform1fv(U.transient,new Float32Array(dynamics.transient));gl.uniform1f(U.flux,dynamics.flux);gl.uniform1f(U.centroid,features.centroid);
+   gl.uniform1fv(U.sustain,new Float32Array(dynamics.sustain));gl.uniform1fv(U.transient,new Float32Array(dynamics.transient));gl.uniform1f(U.flux,dynamics.flux);gl.uniform1f(U.centroid,features.centroid);gl.uniform1f(U.voice,dynamics.voiceSustain);gl.uniform1f(U.voiceAttack,dynamics.voiceTransient);
    gl.drawArrays(gl.TRIANGLES,0,6);
    if(inp.playing&&!inp.reduced)raf=requestAnimationFrame(render);else raf=0;
   };
