@@ -137,6 +137,10 @@ export function useAudioEngine(){
   }
   setFiles(a=>a.filter(f=>f.id!==id));setQueueIds(a=>a.filter(x=>x!==id));
  };
+ const loadQueue=ids=>{
+  const valid=[...new Set(ids)].filter(id=>latest.current.files.some(f=>f.id===id));
+  upNext.current=-1;unshuffledOrder.current=null;setShuffle(false);setQueueIds(valid);
+ };
  const move=(from,to)=>setQueueIds(ids=>reordered(ids,from,to));
  const addNext=id=>setQueueIds(ids=>{const cleaned=ids.filter(x=>x!==id),p=cleaned.indexOf(latest.current.files[latest.current.index]?.id);cleaned.splice(Math.max(0,p+1),0,id);return cleaned});
  const toggleShuffle=()=>{
@@ -166,6 +170,6 @@ export function useAudioEngine(){
  },[files,index,state,shuffle,repeat,queueIds]);
 
  return {files,index,state,seconds,duration,volume,error,eq,importFiles,remove,select,toggle,stop,seek,setGain,next,prev,
- queueIds,move,addNext,shuffle,toggleShuffle,repeat,cycleRepeat,transition,setTransition,
+ queueIds,loadQueue,move,addNext,shuffle,toggleShuffle,repeat,cycleRepeat,transition,setTransition,
  history,historyStats:historyStats(history),clearPlays};
 }
