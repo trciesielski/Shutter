@@ -1,4 +1,5 @@
-import React,{useEffect,useRef,useState} from 'react';
+import React,{useEffect,useRef} from 'react';
+import {spectralFeatures,updateVisualDynamics} from './audioDynamics.js';
 
 // WebGL2 is optional: if unavailable the parent mounts its existing Canvas 2D renderer.
 const VERT=`#version 300 es
@@ -18,6 +19,10 @@ uniform float u_bass;
 uniform float u_mid;
 uniform float u_high;
 uniform float u_beat;
+uniform float u_sustain[8];
+uniform float u_transient[8];
+uniform float u_flux;
+uniform float u_centroid;
 
 #define PI 3.14159265359
 float hash(float n){return fract(sin(n*127.1)*43758.5453);}
@@ -33,13 +38,15 @@ void main(){
  float speed=u_time*.08*u_playing;
  float power=u_intensity;
  float bass=u_bass,mid=u_mid,hi=u_high,beat=u_beat;
+ float sub=u_sustain[0],kick=u_transient[1],vocals=u_sustain[4],presence=u_sustain[6];
+ float movement=u_flux;
  vec3 magenta=vec3(1.,.08,.69),cyan=vec3(.035,.72,1.),purple=vec3(.52,.20,1.);
  vec3 c=vec3(.002,.004,.021);
  // Dark transparent atmosphere with bass-triggered illumination.
  c+=purple*(.018+.080*bass)*exp(-radius*4.)*power;
  c+=cyan*(.010+.036*mid)*exp(-length(uv-vec2(-.25,.17))*4.)*power;
  float ripple=.012*sin(8.*a+u_time*.42+mid*3.)*(.35+mid);
- float inner=.18+beat*.11+ripple*.25;
+ float inner=.18+beat*.10+sub*.045+ripple*(.25+vocals*2.);
  float corona=exp(-pow((radius-inner)/.045,2.));
  c+=mix(magenta,cyan,.5+.5*sin(a*1.8))*corona*(.045+.36*beat+.12*mid)*power;
  float ring=line(radius-inner,.0025)+line(radius-inner,.013)*.30;
@@ -47,7 +54,7 @@ void main(){
  // Multi-layer segmented concentric rings, luminous but not constant bands.
  for(int i=0;i<5;i++){
   float f=float(i);
-  float rr=.235+f*.053+beat*.065*(1.-f*.12);
+  float rr=.235+f*.053+beat*.05*(1.-f*.12)+u_sustain[i+1]*.042*sin(a*3.+f);
   float ix=mod(floor(angular*(58.+f*12.))+f*6.,32.);
   float energy=band(ix);
   float shifted=a+speed*(mod(f,2.)<1.?1.:-1.)*(1.+f*.2);
@@ -65,7 +72,7 @@ void main(){
  float local=abs(fract(angular*sectors)-.5);
  float e=band(mod(id,32.));
  float start=.46;
- float height=(.004+.24*pow(e,1.35))*(.35+.65*beat)*power;
+ float height=(.004+.25*pow(e,1.25))*(.45+.35*beat+.4*u_sustain[int(mod(id,8.))])*power;
  float extent=smoothstep(start-.008,start+.005,radius)*(1.-smoothstep(start+height-.006,start+height+.006,radius));
  float ray=1.-smoothstep(.10,.44,local);
  vec3 hue=mix(cyan,magenta,.5+.5*sin(a*1.5+.8));
@@ -88,7 +95,7 @@ void main(){
   float f=float(j);
   float freq=band(mod(f*3.+floor(angular*18.),32.));
   float y0=(f-4.)*.008;
-  float wave=.048*sin(uv.x*(8.+f*.42)+u_time*.32*u_playing+f*.42)*(mid*.9+.10)+.019*sin(uv.x*19.+f*.85+hi*3.)*(hi+.1);
+  float wave=.048*sin(uv.x*(8.+f*.42)+u_time*.32*u_playing+f*.42)*(vocals*1.35+mid*.45+.02)+.019*sin(uv.x*19.+f*.85+hi*3.)*(hi+.1);
   float yy=uv.y-y0-wave;
   float ribbon=line(yy,.0013)*(mid*.55+freq*.7+.045)+line(yy,.008)*(.04+freq*.12);
   float fade=smoothstep(.17,.46,abs(uv.x))*(1.-smoothstep(.83,1.2,abs(uv.x)));
@@ -116,7 +123,7 @@ void main(){
  float rnd=hash(cell.x*73.+cell.y*19.);
  vec2 grid=fract(uv*52.)-.5;
  float spark=line(length(grid),.05)*(step(.993,rnd));
- c+=mix(cyan,magenta,rnd)*spark*(.07+hi*1.8)*power;
+ c+=mix(cyan,magenta,rnd)*spark*(.02+hi*.45+u_transient[7]*2.5+presence*.75)*power;
  float vignette=1.-smoothstep(.53,1.12,radius);
  c*=vignette;
  // Filmic soft-knee highlight, preserve dark center.
@@ -143,8 +150,8 @@ export default function NeonSpectrum({bins=[],playing=false,intensity=65,onUnava
    gl.useProgram(program);const at=gl.getAttribLocation(program,'a_position');gl.enableVertexAttribArray(at);gl.vertexAttribPointer(at,2,gl.FLOAT,false,0,0);
   }catch(error){console.warn('Neon Spectrum WebGL unavailable',error);onUnavailable?.();return}
   const uniform=name=>gl.getUniformLocation(program,name);
-  const U={resolution:uniform('u_resolution'),time:uniform('u_time'),intensity:uniform('u_intensity'),playing:uniform('u_playing'),bins:uniform('u_bins[0]'),bass:uniform('u_bass'),mid:uniform('u_mid'),high:uniform('u_high'),beat:uniform('u_beat')};
-  const smooth=new Float32Array(32);const metrics={bass:0,mid:0,high:0,beat:0,previous:0,lastHit:0,lastSpectrum:-1};
+  const U={sustain:uniform('u_sustain[0]'),transient:uniform('u_transient[0]'),flux:uniform('u_flux'),centroid:uniform('u_centroid'),resolution:uniform('u_resolution'),time:uniform('u_time'),intensity:uniform('u_intensity'),playing:uniform('u_playing'),bins:uniform('u_bins[0]'),bass:uniform('u_bass'),mid:uniform('u_mid'),high:uniform('u_high'),beat:uniform('u_beat')};
+  const smooth=new Float32Array(32);let dynamics=null;let previousRaw=null;
   const contextLost=e=>{e.preventDefault();cancelAnimationFrame(raf);onUnavailable?.()};
   el.addEventListener('webglcontextlost',contextLost,false);
   const render=t=>{
@@ -153,28 +160,19 @@ export default function NeonSpectrum({bins=[],playing=false,intensity=65,onUnava
    const dpr=Math.min(window.devicePixelRatio||1,inp.background?1.3:1.6);
    const scale=inp.reduced?.65:1;const w=Math.max(1,Math.round(el.clientWidth*dpr*scale)),h=Math.max(1,Math.round(el.clientHeight*dpr*scale));
    if(el.width!==w||el.height!==h){el.width=w;el.height=h;gl.viewport(0,0,w,h)}
-   // Onset detector: compare fresh FFT frames against a slowly adapting baseline.
-   // Hold a short impulse per kick rather than smoothing beat intensity to a static level.
-   const rawBins=Array.from({length:32},(_,i)=>inp.playing?Math.max(0,Math.min(1,Number(inp.bins?.[i]||0)/100)):0);
-   const rawBass=rawBins.slice(0,12).reduce((a,b)=>a+b,0)/12;
-   const rawMid=rawBins.slice(12,24).reduce((a,b)=>a+b,0)/12;
-   const changed=rawBins.some((v,i)=>Math.abs(v-smooth[i])>.018);
-   const rise=Math.max(0,rawBass-metrics.previous);
-   const hit=inp.playing&&changed&&rise>Math.max(.055,metrics.previous*.16)&&t-metrics.lastHit>145;
-   if(hit){metrics.beat=Math.min(1, .58+rise*2.6);metrics.lastHit=t}
-   else metrics.beat*=Math.exp(-dt/185);
-   metrics.previous+=(rawBass-metrics.previous)*(rawBass>metrics.previous ? .055 : .02);
-   const rate=1-Math.exp(-dt/45);
-   for(let i=0;i<32;i++){const raw=rawBins[i];smooth[i]+=(raw-smooth[i])*(raw>smooth[i]?rate:rate*.6)}
-   const avg=(a,b)=>{let sum=0;for(let i=a;i<b;i++)sum+=smooth[i];return sum/(b-a)};
-   const bass=avg(0,12),mid=avg(12,24),high=avg(24,32);
-   // Map spectral movement to geometry and brightness; avoid permanent high-brightness plateaus.
-   const transient=Math.max(0,rawMid-mid)*.8;
-   const visualBeat=Math.min(1,metrics.beat+transient);
+   const features=spectralFeatures(inp.playing?inp.bins:Array(32).fill(0),previousRaw);
+   dynamics=updateVisualDynamics(dynamics,features,dt);
+   previousRaw=features.raw;
+   for(let i=0;i<32;i++)smooth[i]+=(features.raw[i]-smooth[i])*(1-Math.exp(-dt/(features.raw[i]>smooth[i]?45:135)));
+   const bass=(dynamics.sustain[0]+dynamics.sustain[1]+dynamics.sustain[2])/3;
+   const mid=(dynamics.sustain[3]+dynamics.sustain[4]+dynamics.sustain[5])/3;
+   const high=(dynamics.sustain[6]+dynamics.sustain[7])/2;
+   const visualBeat=dynamics.beat;
    gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.useProgram(program);
    gl.uniform2f(U.resolution,w,h);gl.uniform1f(U.time,t/1000);gl.uniform1f(U.intensity,Math.max(.1,Math.min(1,inp.intensity/100)));
    gl.uniform1f(U.playing,inp.playing&&!inp.reduced?1:0);gl.uniform1fv(U.bins,smooth);
    gl.uniform1f(U.bass,bass);gl.uniform1f(U.mid,mid);gl.uniform1f(U.high,high);gl.uniform1f(U.beat,visualBeat);
+   gl.uniform1fv(U.sustain,new Float32Array(dynamics.sustain));gl.uniform1fv(U.transient,new Float32Array(dynamics.transient));gl.uniform1f(U.flux,dynamics.flux);gl.uniform1f(U.centroid,features.centroid);
    gl.drawArrays(gl.TRIANGLES,0,6);
    if(inp.playing&&!inp.reduced)raf=requestAnimationFrame(render);else raf=0;
   };
