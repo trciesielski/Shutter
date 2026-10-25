@@ -80,7 +80,6 @@ function App(){
      <button aria-label={activePlaying?'Pauza':'Odtwórz'} className={`play-button ${activePlaying?"is-playing":""}`} onClick={playToggle}>{activePlaying?<span className="pause-audio-pulse" aria-hidden="true"><span/><span/></span>:<Play fill="currentColor"/>}</button>
      <button aria-label="Następny" onClick={next}><SkipForward fill="currentColor"/></button>
     </div>
-    <div className="playback-state"><span className={activePlaying?'state-dot active':'state-dot'}/>{isLocal?(audio.state==='playing'?'ODTWARZANIE':audio.state==='loading'?'ŁADOWANIE':audio.state==='error'?'BŁĄD':audio.state==='stopped'?'ZATRZYMANO':'PAUZA'):(playing?'ODTWARZANIE · DEMO':progress>=100?'ZATRZYMANO · DEMO':'PAUZA · DEMO')}</div>
    </div>
    <div className="player-right"><Volume2 size={18}/><input type="range" aria-label="Głośność demonstracyjna" value={Math.round(audio.volume*100)} onChange={e=>audio.setGain(Number(e.target.value)/100)}/><span className="quality">SHUTTER</span></div>
   </div></PlayerGlass>
