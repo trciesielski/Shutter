@@ -132,4 +132,4 @@ test('vocal-range proxy responds to midrange spectral data, not pure sub bass',(
  assert.equal(spectralFeatures(Array(32).fill(0)).voice,0);
 });
 
-test('Glass Shards PRO is selectable without changing existing modes',()=>{assert.ok(VISUAL_MODES.some(([id])=>id==='shards'));assert.equal(resolveVisualMode('shards',false,false),'shards')});
+test('Neon Pulse 360 PRO is selectable without changing existing modes',()=>{assert.ok(VISUAL_MODES.some(([id])=>id==='shards'));assert.equal(resolveVisualMode('shards',false,false),'shards')});
