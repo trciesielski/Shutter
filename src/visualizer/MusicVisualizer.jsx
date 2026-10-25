@@ -28,6 +28,7 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true}){
  useEffect(()=>{document.documentElement.classList.toggle('visualizer-backdrop-active',maximized);const onKey=e=>{if(e.key==='Escape')setMaximized(false)};window.addEventListener('keydown',onKey);return()=>{document.documentElement.classList.remove('visualizer-backdrop-active');window.removeEventListener('keydown',onKey)}},[maximized]);
  const mode=resolveVisualMode(settings.mode,!!coverUrl,reduced);
  const neon=mode==='neon'&&!webglFailed;
+ useEffect(()=>{if(!diagnostic)return;const timer=setInterval(()=>{const e=spectrumEnergy(playing?bins:Array(32).fill(0));setLevels({bass:Math.round(e.bass*100),mids:Math.round(e.mids*100),treble:Math.round(e.treble*100)})},150);return()=>clearInterval(timer)},[diagnostic,bins,playing]);
  const input=useRef({});input.current={mode,playing,reduced,intensity:settings.intensity,bins};
  useEffect(()=>{
   const el=canvas.current,ctx=el?.getContext('2d',{alpha:true});if(!ctx)return;
@@ -41,7 +42,7 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true}){
    ctx.setTransform(scale,0,0,scale,0,0);ctx.clearRect(0,0,w,h);
    const energy=Array.from({length:32},(_,i)=>{const raw=playing?clamp((bins[i]||0)/100,0,1):0;spectrum.current[i]+=(raw-spectrum.current[i])*.17;return spectrum.current[i]});
    const {bass,mids,treble}=spectrumEnergy(energy.map(v=>v*100));
-   if(diagnostic&&t-last>180){setLevels({bass:Math.round(bass*100),mids:Math.round(mids*100),treble:Math.round(treble*100)});last=t}
+
    const power=intensity/100,phase=reduced?0:t*.00028;
    // Bass transients drive short light bursts; mids and highs shape movement and detail.
    beat.current+=(bass>beat.current?(bass-beat.current)*.38:(bass-beat.current)*.055);
