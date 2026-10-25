@@ -59,7 +59,7 @@ function App(){
  <main className="main">
  <header className="topbar"><button className="hamburger" aria-label="Otwórz menu" onClick={()=>setMobileMenu(true)}><Menu size={22}/></button><div className="breadcrumb">SHUTTER <span>/</span> {views.find(x=>x.id===view)?.label.toUpperCase()}</div><div className="top-actions"><span className="status-pill"><span/> GLASS ENGINE · 01</span><button className="icon-button" onClick={()=>setTheme(dark?'light':'dark')} aria-label="Przełącz motyw">{dark?<Sun size={18}/>:<Moon size={18}/>}</button><div className="avatar">S</div></div></header>
  <div className="page-content">
- <MusicVisualizer visible={view==='home'} song={song} playing={activePlaying} bins={audio.eq.bins} signalStatus={audio.eq.signalStatus}/>
+ <MusicVisualizer visible={view==='home'} song={song} playing={activePlaying} bins={audio.eq.bins} signalStatus={audio.eq.signalStatus} signalDebug={audio.eq.signalDebug}/>
  {view==='home'&&<>
  <div className="section-heading"><div><span className="eyebrow muted">TWOJA KOLEKCJA</span><h2>Twoje playlisty</h2></div><button onClick={()=>nav('playlists')}>Zobacz wszystkie <ArrowUpRight size={16}/></button></div>
  {playlists.lists.length?<div className="album-grid">{playlists.lists.map((list,i)=><button className="album-card" key={list.id} onClick={()=>nav('playlists')}>{cover(['night','violet','ocean','orange'][i%4],'album-cover')}<strong>{list.name}</strong><small>{list.tracks.length} utworów</small></button>)}</div>:<p className="shutter-empty">Nie masz jeszcze playlist. Utwórz je z własnej muzyki.</p>}
