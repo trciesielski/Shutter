@@ -30,7 +30,7 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true,signa
  useEffect(()=>{document.documentElement.classList.toggle('shutter-visual-focus',focus);return()=>document.documentElement.classList.remove('shutter-visual-focus')},[focus]);
  const mode=resolveVisualMode(settings.mode,!!coverUrl,reduced);
  const neon=mode==='neon'&&!webglFailed;
- useEffect(()=>{if(!diagnostic)return;const timer=setInterval(()=>{const e=spectrumEnergy(playing?bins:Array(32).fill(0));setLevels({bass:Math.round(e.bass*100),mids:Math.round(e.mids*100),treble:Math.round(e.treble*100)})},150);return()=>clearInterval(timer)},[diagnostic,bins,playing]);
+ useEffect(()=>{if(!diagnostic)return;const e=spectrumEnergy(playing?bins:Array(32).fill(0));setLevels({bass:Math.round(e.bass*100),mids:Math.round(e.mids*100),treble:Math.round(e.treble*100)})},[diagnostic,bins,playing]);
  const input=useRef({});input.current={mode,playing,reduced,intensity:settings.intensity,bins};
  useEffect(()=>{
   const el=canvas.current,ctx=el?.getContext('2d',{alpha:true});if(!ctx)return;
