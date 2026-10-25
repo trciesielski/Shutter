@@ -262,3 +262,9 @@
 .library-track-create input{min-width:0;flex:1;width:90px;padding:9px;background:var(--surface2);color:var(--text);border:1px solid var(--line);border-radius:8px}
 .library-track-create button{background:var(--accent);color:#fff;border-radius:8px;padding:8px}
 @media(max-width:510px){.library-track-popover{position:fixed;right:14px;left:14px;top:auto;bottom:calc(215px + env(safe-area-inset-bottom,0px));width:auto;max-height:min(390px,55vh)}}
+
+/* Cover transport overlays the artwork instead of widening the song row. */
+.library-track-cover-action{position:absolute;left:12px;top:12px;width:42px;height:42px;border-radius:10px;display:grid;place-items:center;background:rgba(17,12,34,.45);color:white;z-index:1}
+.library-track-cover-action:hover,.library-track-cover-action:focus-visible{background:rgba(102,65,187,.75)}
+.library-cover-play{opacity:0}
+.library-track-main{touch-action:pan-y;-webkit-user-select:none;user-select:none}
