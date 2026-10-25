@@ -46,9 +46,11 @@ export function useEqualizer(decks){
     let sum=0,peak=0;for(let i=0;i<samples.length;i++){const v=samples[i];sum+=v*v;peak=Math.max(peak,Math.abs(v))}
     const rms=Math.sqrt(sum/samples.length);
     const fft=spectrumBands(spectrum,g.context.sampleRate);
-    const fallback=fft.every(v=>v===0)&&rms>.002;
-    setBins(fallback?pcmSpectrumBands(samples,g.context.sampleRate):fft);
-    setSignalDebug({rms:Math.round(rms*1000)/10,peak:Math.round(peak*1000)/10,context:g.context.state,source:fallback?'PCM':'FFT'});
+    const weakFFT=Math.max(...fft)<2;
+    const fallback=weakFFT&&rms>.002;
+    const output=fallback?pcmSpectrumBands(samples,g.context.sampleRate):fft;
+    setBins(output);
+    setSignalDebug({rms:Math.round(rms*1000)/10,peak:Math.round(peak*1000)/10,context:g.context.state,source:fallback?'PCM':'FFT',maxBand:Math.round(Math.max(...output)*10)/10});
     setSignalStatus(g.context.state==='running'?'connected':g.context.state);
     last=time;
    }
