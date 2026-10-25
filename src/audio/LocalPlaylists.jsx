@@ -1,15 +1,23 @@
 import React,{useState} from 'react';
+import {Heart,Music2,Plus,Play,ChevronLeft,Trash2,X} from 'lucide-react';
 export default function LocalPlaylists({tracks,onPlay,playlists}){
- const [name,setName]=useState('');
+ const [name,setName]=useState(''),[opened,setOpened]=useState(null);
  const {lists,create,toggleTrack,remove}=playlists;
+ const selected=lists.find(l=>l.id===opened);
+ const add=()=>{if(!name.trim())return;create(name);setName('')};
  return <section className="local-playlists">
-  <div className="playlist-new"><input aria-label="Nazwa nowej playlisty" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){create(name);setName('')}}} placeholder="Nazwa nowej playlisty"/><button onClick={()=>{create(name);setName('')}} disabled={!name.trim()}>Utwórz playlistę</button></div>
-  {lists.length===0&&<p className="playlist-hint">Utwórz pierwszą playlistę albo dodaj utwór do Ulubionych.</p>}
-  {lists.map(list=><div key={list.id} className="playlist-user-card">
-   <div className="playlist-user-heading"><strong>{list.name}</strong><span>{list.tracks.length} utworów</span><button aria-label={'Usuń playlistę '+list.name} onClick={()=>remove(list.id)}>Usuń</button></div>
-   {tracks.filter(track=>list.tracks.includes(track.id)).map(track=><div key={track.id} className="playlist-track-option"><span>{track.title}</span><button type="button" onClick={()=>onPlay(tracks.findIndex(t=>t.id===track.id))}>Odtwórz</button><button type="button" onClick={()=>toggleTrack(list.id,track.id)} aria-label={'Usuń '+track.title+' z '+list.name}>Usuń z listy</button></div>)}
-   {!list.tracks.length&&<p className="playlist-hint">Ta playlista jest pusta. Dodaj utwór z Biblioteki.</p>}
-  </div>)}
-  <p className="playlist-hint">Playlisty zapisujemy lokalnie w tej przeglądarce.</p>
+  <div className="playlist-new"><input aria-label="Nazwa nowej playlisty" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')add()}} placeholder="Nazwa nowej playlisty"/><button onClick={add} disabled={!name.trim()}><Plus size={17}/> Utwórz</button></div>
+  {!selected?<div className="playlist-tiles">
+   {lists.map((list,i)=><button className="playlist-tile" key={list.id} onClick={()=>setOpened(list.id)}>
+    <span className={'playlist-tile-art playlist-tone-'+i%4}>{list.id==='shutter-favorites'?<Heart size={42} strokeWidth={1.6}/>:<Music2 size={42} strokeWidth={1.6}/>}<span className="playlist-tile-play"><Play size={22} fill="currentColor"/></span></span>
+    <strong>{list.name}</strong><small>{list.tracks.length} {list.tracks.length===1?'utwór':'utworów'}</small>
+   </button>)}
+   {!lists.length&&<p className="playlist-hint">Utwórz playlistę lub dodaj utwór do Ulubionych z menu trzech kropek.</p>}
+  </div>:<div className="playlist-detail">
+   <div className="playlist-detail-head"><button className="playlist-back" onClick={()=>setOpened(null)} aria-label="Wróć do playlist"><ChevronLeft size={20}/> Playlisty</button><button className="playlist-delete" onClick={()=>{remove(selected.id);setOpened(null)}}><Trash2 size={15}/> Usuń playlistę</button></div>
+   <h2>{selected.name}</h2><p>{selected.tracks.length} utworów</p>
+   {tracks.filter(t=>selected.tracks.includes(t.id)).map(t=><div className="playlist-detail-track" key={t.id}><span className="playlist-detail-track-title">{t.title}</span><button aria-label={'Odtwórz '+t.title} onClick={()=>onPlay(tracks.findIndex(x=>x.id===t.id))}><Play size={17} fill="currentColor"/></button><button aria-label={'Usuń '+t.title+' z playlisty'} onClick={()=>toggleTrack(selected.id,t.id)}><X size={17}/></button></div>)}
+   {!selected.tracks.length&&<p className="playlist-hint">Pusta playlista. Dodaj utwory w Bibliotece, korzystając z menu trzech kropek.</p>}
+  </div>}
  </section>;
 }
