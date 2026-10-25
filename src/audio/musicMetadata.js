@@ -23,7 +23,7 @@ function parseFLAC(v){
  while(!last&&at+4<=v.length){const flag=v[at];last=!!(flag&128);const type=flag&127;const len=v[at+1]*65536+v[at+2]*256+v[at+3];at+=4;if(at+len>v.length)break;
  if(type===4&&len>=8){let p=at;const limit=at+len;const u=()=>{if(p+4>limit)return 0;const a=dv.getUint32(p,true);p+=4;return a};p+=Math.min(u(),limit-p);const count=Math.min(u(),300);
  for(let i=0;i<count&&p+4<=limit;i++){const l=u();if(l>limit-p)break;const pair=decoder.decode(v.slice(p,p+l));p+=l;const sep=pair.indexOf('=');if(sep<0)continue;const key=pair.slice(0,sep).toUpperCase(),val=safe(pair.slice(sep+1));if(key==='TITLE')out.title=val;if(key==='ARTIST')out.artist=val;if(key==='ALBUM')out.album=val}}
- if(type===6&&len<8_000_000){let p=at;const end=at+len;const u=()=>{if(p+4>end)return 0;const a=dv.getUint32(p,false);p+=4;return a};const m=u();p+=Math.min(m,end-p);p+=4;const desc=u();p+=Math.min(desc,end-p);p+=16;const imageSize=u();if(imageSize>0&&p+imageSize<=end)out.coverBlob=new Blob([v.slice(p,p+imageSize)],{type:'image/jpeg'})}
+ if(type===6&&len<8_000_000){let p=at;const end=at+len;const u=()=>{if(p+4>end)return 0;const a=dv.getUint32(p,false);p+=4;return a};const m=u();const mime=decoder.decode(v.slice(p,p+Math.min(m,end-p)))||'image/jpeg';p+=Math.min(m,end-p);p+=4;const desc=u();p+=Math.min(desc,end-p);p+=16;const imageSize=u();if(imageSize>0&&p+imageSize<=end)out.coverBlob=new Blob([v.slice(p,p+imageSize)],{type:mime})}
  at+=len;
  }
  return out;
