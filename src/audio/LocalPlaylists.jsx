@@ -1,6 +1,6 @@
 import React,{useState,useEffect} from 'react';
 import {Heart,Music2,Plus,Play,Pause,ChevronLeft,Trash2,X} from 'lucide-react';
-export default function LocalPlaylists({tracks,onPlay,onToggle,activeId,isPlaying,playlists}){
+export default function LocalPlaylists({tracks,onPlay,onPlaylistPlay,onToggle,activeId,isPlaying,playlists}){
  const [name,setName]=useState(''),[opened,setOpened]=useState(null);
  const {lists,create,toggleTrack,remove}=playlists;
  const selected=lists.find(l=>l.id===opened);
@@ -17,7 +17,7 @@ export default function LocalPlaylists({tracks,onPlay,onToggle,activeId,isPlayin
   </div>:<div className="playlist-detail">
    <div className="playlist-detail-head"><button className="playlist-back" onClick={()=>setOpened(null)} aria-label="Wróć do playlist"><ChevronLeft size={20}/> Playlisty</button><button className="playlist-delete" onClick={()=>{remove(selected.id);setOpened(null)}}><Trash2 size={15}/> Usuń playlistę</button></div>
    <h2>{selected.name}</h2><p>{selected.tracks.length} utworów</p>
-   <div className="playlist-detail-scroll" role="region" aria-label={"Utwory playlisty "+selected.name} tabIndex={0}>{tracks.filter(t=>selected.tracks.includes(t.id)).map(t=><div className="playlist-detail-track" key={t.id}><span className="playlist-detail-track-title">{t.title}</span><button aria-label={(activeId===t.id&&isPlaying?'Wstrzymaj ':'Odtwórz ')+t.title} onClick={()=>activeId===t.id?onToggle():onPlay(tracks.findIndex(x=>x.id===t.id))}>{activeId===t.id&&isPlaying?<Pause size={17} fill="currentColor"/>:<Play size={17} fill="currentColor"/>}</button><button aria-label={'Usuń '+t.title+' z playlisty'} onClick={()=>toggleTrack(selected.id,t.id)}><X size={17}/></button></div>)}
+   <div className="playlist-detail-scroll" role="region" aria-label={"Utwory playlisty "+selected.name} tabIndex={0}>{tracks.filter(t=>selected.tracks.includes(t.id)).map(t=><div className="playlist-detail-track" key={t.id}><span className="playlist-detail-track-title">{t.title}</span><button aria-label={(activeId===t.id&&isPlaying?'Wstrzymaj ':'Odtwórz ')+t.title} onClick={()=>activeId===t.id?onToggle():onPlaylistPlay?onPlaylistPlay(selected,t.id):onPlay(tracks.findIndex(x=>x.id===t.id))}>{activeId===t.id&&isPlaying?<Pause size={17} fill="currentColor"/>:<Play size={17} fill="currentColor"/>}</button><button aria-label={'Usuń '+t.title+' z playlisty'} onClick={()=>toggleTrack(selected.id,t.id)}><X size={17}/></button></div>)}
    {!selected.tracks.length&&<p className="playlist-hint">Pusta playlista. Dodaj utwory w Bibliotece, korzystając z menu trzech kropek.</p>}</div>
   </div>}
  </section>;
