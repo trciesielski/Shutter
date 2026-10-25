@@ -75,7 +75,7 @@ export function useAudioEngine(){
   let preloaded=Boolean(!cross&&old.ended&&standby?.src===f.url);
   let standbyReady=Boolean((cross||preloaded)&&standby?.src===f.url);
   let targetDeck=cross||preloaded?1-currentDeck:currentDeck,target=decks.current[targetDeck];
-  if(cross)busy.current=true;
+  busy.current=true;
   setError('');
   try{
    const ok=await eq.activate();
@@ -105,6 +105,7 @@ export function useAudioEngine(){
   if(saved.some(x=>x.status==='rejected'))setError('Brak miejsca: część plików dodano tylko do tej sesji.');
  };
  const toggle=async()=>{
+  if(busy.current)return;
   const a=current();if(!a||!latest.current.files.length)return;
   if(!a.src){await select(latest.current.index,false);return}
   if(!a.paused){a.pause();return}
