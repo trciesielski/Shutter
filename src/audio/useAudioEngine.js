@@ -39,6 +39,10 @@ export function useAudioEngine(){
     if(f&&Number.isFinite(a.currentTime)&&Math.floor(a.currentTime)%5===0){
       try{localStorage.setItem(positionKey,JSON.stringify({id:f.id,time:a.currentTime}))}catch{}
     }
+    if(info.transition===0&&info.repeat!=='one'&&Number.isFinite(remaining)&&remaining>0&&remaining<20&&!busy.current){
+      const at=neighbor(true),upcoming=info.files[at],standby=decks.current[1-i];
+      if(upcoming&&standby&&standby.src!==upcoming.url){standby.src=upcoming.url;standby.preload='auto';standby.load()}
+    }
     if(info.transition>0&&info.repeat!=='one'&&Number.isFinite(remaining)&&remaining>0&&remaining<=info.transition+.15&&!busy.current&&!a.paused){
       const at=neighbor(true);if(at>=0&&at!==info.index)change.current?.(at,true);
     }
@@ -67,18 +71,20 @@ export function useAudioEngine(){
   if(busy.current)return;
   const currentDeck=activeDeck.current,old=decks.current[currentDeck];
   const cross=Boolean(withFade&&info.transition>0&&!old.paused&&old.src&&at!==info.index);
-  const targetDeck=cross?1-currentDeck:currentDeck,target=decks.current[targetDeck];
+  const standby=decks.current[1-currentDeck];
+  const preloaded=Boolean(!cross&&old.ended&&standby?.src===f.url);
+  const targetDeck=cross||preloaded?1-currentDeck:currentDeck,target=decks.current[targetDeck];
   if(cross)busy.current=true;
   setError('');
   try{
    const ok=await eq.activate();
    if(!ok){setError('Przetwarzanie EQ jest niedostępne na tym urządzeniu. Spróbuj innej przeglądarki.');busy.current=false;return}
-   if(!cross){clearTimeout(fadeTimer.current);decks.current[1-currentDeck].pause();eq.setDeck(currentDeck);old.pause()}
-   target.src=f.url;target.load();target.volume=volume;
+   if(!cross){clearTimeout(fadeTimer.current);if(!preloaded)standby.pause();eq.setDeck(targetDeck);old.pause()}
+   if(!preloaded){target.src=f.url;target.load()}target.volume=volume;
    if(cross){eq.setDeck(currentDeck)}
    // Playback starts from the user's interaction; both decks share the same EQ graph.
    await target.play();
-   if(cross){eq.mixDecks(currentDeck,targetDeck,info.transition);activeDeck.current=targetDeck;fadeTimer.current=setTimeout(()=>{old.pause();old.removeAttribute('src');old.load();busy.current=false},info.transition*1000+150)}
+   if(cross){eq.mixDecks(currentDeck,targetDeck,info.transition);activeDeck.current=targetDeck;fadeTimer.current=setTimeout(()=>{old.pause();old.removeAttribute('src');old.load();busy.current=false},info.transition*1000+150)}else if(preloaded){activeDeck.current=targetDeck;old.removeAttribute('src');old.load()}
    recorded.current=f.id;setHistory(recordListen(f));setIndex(at);setSeconds(0);setDuration(0);setState('playing');
    if(!cross)busy.current=false;
   }catch(e){busy.current=false;if(cross){target.pause();eq.setDeck(currentDeck)}setState('paused');if(e.name!=='AbortError')setError('Nie można rozpocząć odtwarzania: '+e.message)}
