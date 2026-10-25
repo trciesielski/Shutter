@@ -1,14 +1,19 @@
 import React,{useState,useRef,useEffect} from 'react';
-import {MoreVertical,Heart,Plus,ListPlus,Play,Trash2} from 'lucide-react';
-export default function LibraryTrack({track,index,active,onPlay,onRemove,playlists}){
+import {MoreVertical,Heart,Plus,ListPlus,Play,Pause,Trash2} from 'lucide-react';
+export default function LibraryTrack({track,index,active,playing,onPlay,onToggle,onRemove,playlists}){
  const [open,setOpen]=useState(false),[creating,setCreating]=useState(false),[name,setName]=useState('');
- const ref=useRef(null);
+ const ref=useRef(null),hold=useRef(null),held=useRef(false);
+ const clearHold=()=>{if(hold.current){clearTimeout(hold.current);hold.current=null}};
+ useEffect(()=>()=>clearHold(),[]);
+ const down=e=>{if(e.button!==0&&e.pointerType==='mouse')return;held.current=false;clearHold();hold.current=setTimeout(()=>{held.current=true;setOpen(true)},550)};
+ const up=()=>clearHold();
  useEffect(()=>{if(!open)return;const close=e=>{if(!ref.current?.contains(e.target))setOpen(false)};const esc=e=>{if(e.key==='Escape')setOpen(false)};document.addEventListener('pointerdown',close);document.addEventListener('keydown',esc);return()=>{document.removeEventListener('pointerdown',close);document.removeEventListener('keydown',esc)}},[open]);
  return <div className={'library-track '+(active?'selected':'')} ref={ref}>
-  <button className="library-track-main" onClick={()=>setOpen(x=>!x)} aria-label={'Opcje utworu '+track.title} aria-expanded={open}>
-   <span className="library-track-art" aria-hidden="true">♫</span>
+  <button className="library-track-main" onPointerDown={down} onPointerUp={up} onPointerLeave={up} onPointerCancel={up} onContextMenu={e=>{e.preventDefault();clearHold();held.current=true;setOpen(true)}} onClick={()=>{if(held.current){held.current=false;return}onPlay(index)}} aria-label={'Odtwórz utwór '+track.title}>
+   <span className="library-track-art" aria-hidden="true"><span className="library-cover-play">{active&&playing?<Pause size={18} fill="currentColor"/>:<Play size={18} fill="currentColor"/>}</span></span>
    <span className="library-track-title"><strong>{track.title}</strong><small>{track.artist||'Plik lokalny'}</small></span>
   </button>
+  <button type="button" className="library-track-cover-action" onClick={()=>active?onToggle():onPlay(index)} aria-label={active&&playing?"Pauza":"Odtwórz"}>{active&&playing?<Pause size={16} fill="currentColor"/>:<Play size={16} fill="currentColor"/>}</button>
   <button type="button" className="library-track-menu-trigger" aria-label={'Menu utworu '+track.title} onClick={()=>setOpen(x=>!x)} aria-expanded={open}><MoreVertical size={21}/></button>
   {open&&<div className="library-track-popover" role="group" aria-label={'Akcje dla '+track.title}>
    <button onClick={()=>{onPlay(index);setOpen(false)}}><Play size={17}/> Odtwórz</button>
