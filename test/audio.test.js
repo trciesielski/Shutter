@@ -1,3 +1,4 @@
+import {resolveVisualMode,VISUAL_MODES} from '../src/visualizer/modes.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {nextIndex,previousIndex,reordered,shuffledQueue} from '../src/audio/queueLogic.js';
@@ -58,4 +59,13 @@ test('repeat one and all respond to actual track end',()=>{
  assert.equal(nextIndex({length:4,index:2,repeat:'one'},true),2);
  assert.equal(nextIndex({length:4,index:3,repeat:'all'},true),0);
  assert.equal(nextIndex({length:4,index:3,repeat:'off'},true),-1);
+});
+
+test('visualizer auto picks cover, mirage or reduced motion minimal',()=>{
+ assert.equal(resolveVisualMode('auto',true,false),'cover');
+ assert.equal(resolveVisualMode('auto',false,false),'mirage');
+ assert.equal(resolveVisualMode('auto',false,true),'minimal');
+ assert.equal(resolveVisualMode('orb',false,true),'orb');
+ assert.equal(resolveVisualMode('invalid',false,false),'minimal');
+ assert.equal(new Set(VISUAL_MODES.map(v=>v[0])).size,VISUAL_MODES.length);
 });
