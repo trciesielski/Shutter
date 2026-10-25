@@ -137,3 +137,5 @@ test('Neon Pulse 360 PRO is selectable without changing existing modes',()=>{ass
 test('Sonic Lines PRO remains independently selectable',()=>{assert.ok(VISUAL_MODES.some(([id])=>id==='sonic'));assert.equal(resolveVisualMode('sonic',false,false),'sonic')});
 
 test('Neon Waves PRO is a separate visualizer mode',()=>{assert.ok(VISUAL_MODES.some(([id])=>id==='waves'));assert.equal(resolveVisualMode('waves',false,false),'waves')});
+
+test('Sonic Waves PRO is a supported visualizer mode',()=>{assert.ok(VISUAL_MODES.some(([id])=>id==='waves'));assert.equal(resolveVisualMode('waves',false,false),'waves')});
