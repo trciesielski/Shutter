@@ -3,6 +3,7 @@ import {Maximize2,Minimize2} from 'lucide-react';
 import {createPortal} from 'react-dom';
 import {VISUAL_MODES,resolveVisualMode} from './modes.js';
 import {spectrumEnergy} from '../audio/spectrumBands.js';
+import NeonSpectrum from './NeonSpectrum.jsx';
 import './visualizer.css';
 
 const KEY='shutter-visualizer-v1';
@@ -19,12 +20,14 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true}){
  const [coverUrl,setCoverUrl]=useState(null);
  const [maximized,setMaximized]=useState(false);
  const [diagnostic,setDiagnostic]=useState(false);
+ const [webglFailed,setWebglFailed]=useState(false);
  const [levels,setLevels]=useState({bass:0,mids:0,treble:0});
  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(settings))}catch{}},[settings]);
  useEffect(()=>{const mq=window.matchMedia('(prefers-reduced-motion: reduce)');const update=()=>setReduced(mq.matches);mq.addEventListener?.('change',update);return()=>mq.removeEventListener?.('change',update)},[]);
  useEffect(()=>{if(!song?.coverBlob){setCoverUrl(null);return}const u=URL.createObjectURL(song.coverBlob);setCoverUrl(u);return()=>URL.revokeObjectURL(u)},[song?.coverBlob]);
  useEffect(()=>{document.documentElement.classList.toggle('visualizer-backdrop-active',maximized);const onKey=e=>{if(e.key==='Escape')setMaximized(false)};window.addEventListener('keydown',onKey);return()=>{document.documentElement.classList.remove('visualizer-backdrop-active');window.removeEventListener('keydown',onKey)}},[maximized]);
  const mode=resolveVisualMode(settings.mode,!!coverUrl,reduced);
+ const neon=mode==='neon'&&!webglFailed;
  const input=useRef({});input.current={mode,playing,reduced,intensity:settings.intensity,bins};
  useEffect(()=>{
   const el=canvas.current,ctx=el?.getContext('2d',{alpha:true});if(!ctx)return;
@@ -45,7 +48,7 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true}){
    const pulse=clamp(bass*1.25+(bass-beat.current)*2.4,0,1);
    const cx=w*.5,cy=h*.49;
    if(playing){const aura=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.max(w,h)*.65);aura.addColorStop(0,'rgba(142,80,255,'+(pulse*.25*power)+')');aura.addColorStop(.4,'rgba(65,106,248,'+(mids*.13*power)+')');aura.addColorStop(1,'rgba(90,50,145,0)');ctx.fillStyle=aura;ctx.fillRect(0,0,w,h)}
-   if(mode==='minimal'){
+   if(mode==='neon' || mode==='minimal'){
     for(let j=0;j<3;j++){ctx.beginPath();ctx.strokeStyle='rgba(165,133,255,'+(.16+j*.06+bass*.28)*power+')';ctx.lineWidth=1.2+j*.55;for(let x=0;x<=w;x+=4){const y=h*(.38+j*.13)+Math.sin(x*.018+phase*(j+1)*3+j)*((reduced?1:9)+bass*110+treble*48)*power;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke()}
    }else if(mode==='orb'||mode==='mirage'){
     const r=Math.min(w,h)*.25*(1+pulse*.48*power);
@@ -64,7 +67,7 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true}){
   return()=>{live=false;cancelAnimationFrame(frame.current)};
  },[mode,playing,reduced,maximized,diagnostic]);
  const scene=<div className={'visualizer-scene'+(maximized?' visualizer-scene-backdrop':'')}>
-  <canvas ref={canvas} aria-hidden="true"/>
+  {neon?<NeonSpectrum bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>:<canvas ref={canvas} aria-hidden="true"/>}
   {mode==='cover'&&<div className="visualizer-cover">{coverUrl?<img src={coverUrl} alt="Okładka aktualnego utworu"/>:<div className="visualizer-fallback" aria-hidden="true"><strong>♪</strong></div>}</div>}
   <div className="visualizer-vignette"/>
  </div>;
