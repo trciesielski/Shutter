@@ -325,3 +325,32 @@ html,body,#root{max-width:100%;overflow-x:clip}
  .player-controls .play-button{width:76px!important;height:76px!important;border-radius:50%!important}
 }
 @media(max-width:350px){.player-controls .play-button{width:70px!important;height:70px!important}}
+
+/* FIX 09 — higher-specificity Play rules win over button:not(:disabled) */
+.player-controls button.play-button:not(:disabled){
+  display:grid!important;place-items:center!important;
+  flex:0 0 80px!important;
+  width:80px!important;height:80px!important;
+  min-width:80px!important;min-height:80px!important;
+  aspect-ratio:1!important;
+  border-radius:9999px!important;border:0!important;
+  background:linear-gradient(150deg,#bdaaff 0%,#976dfd 43%,#693ddb 100%)!important;
+  color:#fff!important;
+  box-shadow:inset 0 2px 3px rgba(255,255,255,.35),0 8px 24px rgba(109,65,230,.38)!important;
+}
+.player-controls button.play-button:not(:disabled) svg{width:32px!important;height:32px!important}
+.player-controls button:not(.play-button):not(:disabled){
+  border-radius:9999px!important;aspect-ratio:1!important;
+}
+@media(max-width:510px){
+ .player-controls button.play-button:not(:disabled){
+  width:76px!important;height:76px!important;
+  min-width:76px!important;min-height:76px!important;flex-basis:76px!important;
+ }
+}
+@media(max-width:350px){
+ .player-controls button.play-button:not(:disabled){
+  width:70px!important;height:70px!important;
+  min-width:70px!important;min-height:70px!important;flex-basis:70px!important;
+ }
+}
