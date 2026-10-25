@@ -1,0 +1,19 @@
+{
+  "id": "/Shutter/",
+  "name": "Shutter Music",
+  "short_name": "Shutter",
+  "description": "Shutter — osobisty odtwarzacz muzyki",
+  "start_url": "/Shutter/",
+  "scope": "/Shutter/",
+  "display": "standalone",
+  "background_color": "#090c15",
+  "theme_color": "#10121d",
+  "icons": [
+    {
+      "src": "/Shutter/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
