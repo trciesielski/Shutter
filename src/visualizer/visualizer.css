@@ -57,3 +57,13 @@ html.visualizer-backdrop-active .music-visualizer .visualizer-maximize{backdrop-
 .music-visualizer.is-away.is-maximized .visualizer-head{position:fixed!important;top:calc(env(safe-area-inset-top,0px) + 72px)!important;right:18px!important;left:auto!important;z-index:45!important;padding:0!important}
 .music-visualizer.is-away.is-maximized .visualizer-mode,.music-visualizer.is-away.is-maximized .visualizer-intensity{display:none!important}
 .music-visualizer.is-away.is-maximized .visualizer-maximize{width:36px;height:36px}
+
+/* Signal diagnostics: hidden unless requested, unobtrusive over app. */
+.visualizer-diagnostic-toggle{color:var(--muted);font-size:10px;letter-spacing:.7px;font-weight:800;padding:9px 7px;border:1px solid var(--line);border-radius:10px}
+.visualizer-diagnostic-toggle[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+.visualizer-diagnostic{display:grid;gap:6px;position:relative;z-index:6;max-width:380px;padding:10px 12px;margin:-4px 0 12px;background:color-mix(in srgb,var(--surface) 88%,transparent);border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(12px)}
+.visualizer-diagnostic>span{font-size:10px;letter-spacing:.8px;color:var(--muted);font-weight:800}
+.visualizer-diagnostic label{display:grid;grid-template-columns:58px 1fr 35px;align-items:center;gap:8px;font-size:11px;color:var(--text)}
+.visualizer-diagnostic meter{width:100%;height:12px;accent-color:var(--accent)}
+.visualizer-diagnostic strong{text-align:right;font-variant-numeric:tabular-nums;font-size:10px}
+.music-visualizer.is-away.is-maximized .visualizer-diagnostic{display:none}
