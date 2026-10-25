@@ -32,3 +32,21 @@
  .music-visualizer.is-maximized .visualizer-head{padding:calc(env(safe-area-inset-top,0px) + 15px) 18px 0!important}
  .music-visualizer.is-maximized .visualizer-scene{height:auto}
 }
+
+/* LIVE BACKGROUND V3 — scene lives beneath every interactive app layer. */
+html.visualizer-backdrop-active body{background:var(--bg)}
+html.visualizer-backdrop-active .app-shell{position:relative;z-index:1;background:transparent!important}
+html.visualizer-backdrop-active .sidebar{background:color-mix(in srgb,var(--side) 76%,transparent)!important;backdrop-filter:blur(12px)}
+html.visualizer-backdrop-active .main>.topbar{background:color-mix(in srgb,var(--bg) 76%,transparent)!important;backdrop-filter:blur(12px)}
+html.visualizer-backdrop-active .page-content{background:transparent!important}
+html.visualizer-backdrop-active .content-card{background:color-mix(in srgb,var(--surface) 80%,transparent)}
+html.visualizer-backdrop-active .shutter-glass{z-index:30}
+.music-visualizer.is-maximized{position:relative!important;inset:auto!important;width:auto!important;height:auto!important;min-height:0!important;margin:0 0 14px!important;display:block!important;overflow:visible!important;background:transparent!important;z-index:auto!important}
+.music-visualizer.is-maximized .visualizer-head{position:relative!important;padding:8px 4px 0!important;z-index:2!important}
+.visualizer-scene-backdrop{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-height:none!important;min-height:0!important;overflow:hidden!important;z-index:0!important;pointer-events:none!important}
+.visualizer-scene-backdrop canvas{position:absolute;inset:0;width:100%;height:100%}
+.visualizer-scene-backdrop .visualizer-cover{width:min(45vw,40vh,330px)!important;opacity:.30;filter:blur(2px);mix-blend-mode:screen}
+.visualizer-scene-backdrop .visualizer-vignette{background:radial-gradient(ellipse at center,transparent 12%,var(--bg) 100%)!important;opacity:.42!important}
+html.visualizer-backdrop-active .music-visualizer .visualizer-mode select,
+html.visualizer-backdrop-active .music-visualizer .visualizer-maximize{backdrop-filter:blur(16px);background:color-mix(in srgb,var(--surface) 75%,transparent)!important}
+@media(max-width:580px){.music-visualizer.is-maximized{min-height:0!important;margin-bottom:12px!important}.visualizer-scene-backdrop .visualizer-cover{width:min(55vw,34vh,220px)!important}}
