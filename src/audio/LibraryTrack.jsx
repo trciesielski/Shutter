@@ -3,10 +3,12 @@ import {MoreVertical,Heart,Plus,ListPlus,Play,Pause,Trash2} from 'lucide-react';
 export default function LibraryTrack({track,index,active,playing,onPlay,onToggle,onRemove,playlists}){
  const [open,setOpen]=useState(false),[creating,setCreating]=useState(false),[name,setName]=useState('');
  const ref=useRef(null);
+ const [artUrl,setArtUrl]=useState(null);
+ useEffect(()=>{if(!track.coverBlob)return;const url=URL.createObjectURL(track.coverBlob);setArtUrl(url);return()=>URL.revokeObjectURL(url)},[track.coverBlob]);
  useEffect(()=>{if(!open)return;const close=e=>{if(!ref.current?.contains(e.target))setOpen(false)};const esc=e=>{if(e.key==='Escape')setOpen(false)};document.addEventListener('pointerdown',close);document.addEventListener('keydown',esc);return()=>{document.removeEventListener('pointerdown',close);document.removeEventListener('keydown',esc)}},[open]);
  return <div className={'library-track '+(active?'selected':'')} ref={ref}>
   <button className="library-track-main" onClick={()=>active?onToggle():onPlay(index)} aria-label={'Odtwórz utwór '+track.title}>
-   <span className="library-track-art" aria-hidden="true"><span className="library-cover-play">{active&&playing?<Pause size={20} fill="currentColor"/>:<Play size={20} fill="currentColor"/>}</span></span>
+   <span className="library-track-art" aria-hidden="true">{artUrl&&<img src={artUrl} alt="" className="library-track-cover-image"/>}<span className="library-cover-play">{active&&playing?<Pause size={20} fill="currentColor"/>:<Play size={20} fill="currentColor"/>}</span></span>
    <span className="library-track-title"><strong>{track.title}</strong><small>{track.artist||'Plik lokalny'}</small></span>
   </button>
   <button type="button" className="library-track-menu-trigger" aria-label={'Menu utworu '+track.title} onClick={()=>setOpen(x=>!x)} aria-expanded={open}><MoreVertical size={21}/></button>
