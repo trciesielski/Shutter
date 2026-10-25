@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {nextIndex,previousIndex,reordered} from '../src/audio/queueLogic.js';
+import {nextIndex,previousIndex,reordered,shuffledQueue} from '../src/audio/queueLogic.js';
 import {extractMetadata} from '../src/audio/musicMetadata.js';
 import {equalPowerCurves} from '../src/audio/crossfadeMath.js';
 import {historyStats} from '../src/audio/listeningHistory.js';
@@ -44,4 +44,18 @@ test('crossfade maintains approximately equal power at midpoint',()=>{
  assert.equal(fadeOut[0],1);assert.ok(fadeIn[0]<1e-6);
  assert.ok(Math.abs(fadeIn[64]**2+fadeOut[64]**2-1)<1e-5);
  assert.ok(fadeIn[128]>0.999);assert.ok(Math.abs(fadeOut[128])<1e-5);
+});
+
+test('shuffle changes visible order, keeps active first, and does not lose tracks',()=>{
+ const ids=['a','b','c','d'];
+ const mixed=shuffledQueue(ids,'b',()=>0);
+ assert.equal(mixed[0],'b');
+ assert.deepEqual([...mixed].sort(),[...ids].sort());
+ assert.notDeepEqual(mixed,ids);
+ assert.equal(nextIndex({length:mixed.length,index:0,repeat:'off'}),1);
+});
+test('repeat one and all respond to actual track end',()=>{
+ assert.equal(nextIndex({length:4,index:2,repeat:'one'},true),2);
+ assert.equal(nextIndex({length:4,index:3,repeat:'all'},true),0);
+ assert.equal(nextIndex({length:4,index:3,repeat:'off'},true),-1);
 });
