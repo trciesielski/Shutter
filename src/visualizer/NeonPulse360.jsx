@@ -20,20 +20,20 @@ void main(){
  // Normalized using viewport width/height separately so the circular artwork stays centered.
  vec2 p=(gl_FragCoord.xy-u_resolution*.5)/min(u_resolution.x,u_resolution.y);
  // 0.73 keeps outer arcs within the available frame, especially on Android.
- p*=1.26;
+ p*=1.55;
  float r=length(p),a=atan(p.y,p.x);
  float t=u_time*u_playing,amp=u_intensity,beat=u_beat;
  vec3 pink=vec3(1.,.04,.39),orange=vec3(1.,.30,.065),gold=vec3(1.,.61,.18);
  vec3 violet=vec3(.45,.12,1.),blue=vec3(.045,.24,1.),cyan=vec3(.025,.73,1.);
- vec3 color=vec3(.008,.005,.036);
+ vec3 color=vec3(.006,.003,.026);
  // Dark negative space between the arc tracks; keep atmospheric glow restrained.
- color+=violet*glow(r-.36,.42)*(.038+.035*u_mid);
- color+=blue*glow(length(p-vec2(-.28,-.19)),.39)*(.028+.045*u_high);
+ color+=violet*glow(r-.36,.31)*(.018+.018*u_mid);
+ color+=blue*glow(length(p-vec2(-.28,-.19)),.30)*(.014+.026*u_high);
  // Radiant center without dark hole, but small enough to preserve ring definition.
- color+=pink*glow(r,.093)*(.27+.23*u_voice);
- color+=violet*glow(r,.065)*(.35+.28*beat);
- color+=vec3(1.,.76,.58)*glow(r,.024)*(.65+.8*beat);
- color+=vec3(1.,.94,.82)*glow(r,.009)*(.5+.32*beat);
+ color+=pink*glow(r,.071)*(.18+.22*u_voice);
+ color+=violet*glow(r,.041)*(.23+.32*beat);
+ color+=vec3(1.,.68,.50)*glow(r,.019)*(.60+.8*beat);
+ color+=vec3(1.,.94,.82)*glow(r,.0065)*(.45+.40*beat);
  // Short, separated arc tracks, with individual audio control and alternating chroma.
  for(int i=0;i<12;i++){
   float k=float(i);
@@ -44,7 +44,7 @@ void main(){
   // Per-track arc 45-115 degrees, leaving substantial true darkness around it.
   float start=fract(k*.183+.06);
   float dArc=fract(sector-start+1.);
-  float lengthArc=.15+.12*fract(k*.29);
+  float lengthArc=.105+.105*fract(k*.29);
   float cut=smoothstep(.0,.022,dArc)*(1.-smoothstep(lengthArc-.022,lengthArc,dArc));
   // Occasional second, thinner segment on selected rings.
   float second=step(0.5,fract(k*.37))*smoothstep(.0,.018,fract(dArc+.49))*(1.-smoothstep(.075,.095,fract(dArc+.49)))*.47;
@@ -52,10 +52,10 @@ void main(){
   float displacement=.0025*sin(a*5.+t*.25+k)*(.2+u_voice*.75);
   float d=r-rad-displacement;
   vec3 hue=mod(k,5.)<1.?cyan:mod(k,5.)<2.?violet:mod(k,5.)<3.?pink:mod(k,5.)<4.?orange:gold;
-  float strength=mask*(.33+.65*sustain+.9*hit+.26*beat)*amp;
+  float strength=mask*(.40+.55*sustain+1.10*hit+.36*beat)*amp;
   color+=hue*glow(d,.0031)*strength*2.1;
-  color+=hue*glow(d,.012)*strength*.29;
-  color+=hue*glow(d,.026)*strength*.055;
+  color+=hue*glow(d,.010)*strength*.20;
+  color+=hue*glow(d,.024)*strength*.032;
   float tip=glow(dArc-.022,.012)+glow(dArc-lengthArc+.02,.014);
   color+=vec3(1.,.85,.72)*glow(d,.004)*tip*(.24+.55*hit)*amp;
  }
@@ -67,18 +67,18 @@ void main(){
   float mask=smoothstep(.0,.025,portion)*(1.-smoothstep(.20+.035*mod(k,2.),.24+.035*mod(k,2.),portion));
   float d=r-rad;
   vec3 hue=i==0?orange:i==1?pink:i==2?cyan:blue;
-  float strength=mask*(.56+.53*u_sustain[i*3]+.85*u_transient[i*3]+.28*beat)*amp;
+  float strength=mask*(.55+.55*u_sustain[i*3]+1.05*u_transient[i*3]+.36*beat)*amp;
   color+=hue*glow(d,.005)*strength*2.0;
-  color+=hue*glow(d,.014)*strength*.30;
-  color+=hue*glow(d,.034)*strength*.05;
-  color+=vec3(1.,.79,.65)*glow(d,.0025)*strength*.65;
+  color+=hue*glow(d,.013)*strength*.20;
+  color+=hue*glow(d,.030)*strength*.034;
+  color+=vec3(1.,.75,.61)*glow(d,.0021)*strength*.43;
  }
  // Small isolated musical highlights; spectral treble affects twinkle.
  vec2 cell=floor(p*46.);
  float rnd=hash(cell),star=glow(length(fract(p*46.)-.5),.10)*step(.984,rnd);
  color+=mix(cyan,pink,rnd)*star*(.12+.58*u_sustain[10]+.95*u_transient[11])*.72*amp;
  // Exponential tonemapping prevents broad white smears.
- color=1.-exp(-color*1.09);
+ color=1.-exp(-color*1.03);
  fragColor=vec4(color,1.);
 }`;
 const compile=(gl,type,source)=>{const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)){const message=gl.getShaderInfoLog(shader);gl.deleteShader(shader);throw Error(message)}return shader};
