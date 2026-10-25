@@ -11,7 +11,7 @@ export function spectralFeatures(bins,previous=null){
 }
 export function updateVisualDynamics(state,features,dtMs){
  const seconds=clamp(dtMs,1,100)/1000;
- const previous=state||{sustain:Array(12).fill(0),transient:Array(8).fill(0),baseline:Array(8).fill(0),beat:0,flux:0};
+ const previous=state||{sustain:Array(12).fill(0),transient:Array(12).fill(0),baseline:Array(12).fill(0),beat:0,flux:0};
  const sustain=[],transient=[],baseline=[];
  for(let i=0;i<12;i++){
   const x=features.bands[i]||0,was=previous.sustain[i]||0,base=previous.baseline[i]||0;
