@@ -107,3 +107,39 @@
  .app-shell{padding-bottom:225px}
 }
 @media(max-width:355px){.shutter-glass .player-bar-v5 .player-controls{gap:12px}}
+
+/* PLAYER V6 — thin seek track, glass thumb, restrained active halo */
+.shutter-glass .player-bar-v5 .progress-line input[type="range"]{
+ appearance:none;-webkit-appearance:none;
+ background:linear-gradient(to right,#946cff 0%,#946cff var(--seek-progress,0%),rgba(231,225,255,.24) var(--seek-progress,0%),rgba(231,225,255,.24) 100%);
+ height:4px!important;border:0;border-radius:999px;
+ margin:0;cursor:pointer;
+}
+.shutter-glass .player-bar-v5 .progress-line input[type="range"]::-webkit-slider-thumb{
+ -webkit-appearance:none;appearance:none;
+ width:15px;height:15px;border-radius:50%;border:0;
+ background:radial-gradient(circle at 32% 24%,rgba(255,255,255,.86),rgba(199,178,255,.43) 28%,rgba(144,101,247,.93) 72%);
+ box-shadow:inset 0 1px 2px rgba(255,255,255,.66),0 1px 5px rgba(82,47,173,.38);
+}
+.shutter-glass .player-bar-v5 .progress-line input[type="range"]::-moz-range-thumb{
+ width:15px;height:15px;border-radius:50%;border:0;
+ background:radial-gradient(circle at 32% 24%,rgba(255,255,255,.86),rgba(199,178,255,.43) 28%,rgba(144,101,247,.93) 72%);
+ box-shadow:inset 0 1px 2px rgba(255,255,255,.66),0 1px 5px rgba(82,47,173,.38);
+}
+.shutter-glass .player-bar-v5 .player-controls button.play-button{position:relative;isolation:isolate}
+.shutter-glass .player-bar-v5 .player-controls button.play-button::before{
+ content:"";position:absolute;inset:-7px;border-radius:50%;pointer-events:none;
+ border:1px solid rgba(199,174,255,.22);
+ box-shadow:0 0 12px rgba(143,102,249,.11),inset 0 0 10px rgba(255,255,255,.06);
+ opacity:0;transform:scale(.97);
+}
+.shutter-glass .player-bar-v5 .player-controls button.play-button.is-playing::before{
+ opacity:1;animation:shutter-glass-halo 3.1s ease-in-out infinite;
+}
+@keyframes shutter-glass-halo{
+ 0%,100%{transform:scale(.98);opacity:.30;box-shadow:0 0 9px rgba(143,102,249,.10)}
+ 50%{transform:scale(1.045);opacity:.62;box-shadow:0 0 17px rgba(143,102,249,.22)}
+}
+@media(prefers-reduced-motion:reduce){
+ .shutter-glass .player-bar-v5 .player-controls button.play-button.is-playing::before{animation:none;opacity:.35;transform:none}
+}
