@@ -141,3 +141,10 @@ test('Neon Waves PRO is a separate visualizer mode',()=>{assert.ok(VISUAL_MODES.
 test('Sonic Waves PRO is a supported visualizer mode',()=>{assert.ok(VISUAL_MODES.some(([id])=>id==='waves'));assert.equal(resolveVisualMode('waves',false,false),'waves')});
 
 test('all visualizer mode ids are unique and neon line modes remain selectable',()=>{const ids=VISUAL_MODES.map(([id])=>id);assert.equal(new Set(ids).size,ids.length);assert.ok(ids.includes('sonic'));assert.ok(ids.includes('neon-waves'));assert.equal(resolveVisualMode('sonic',false,false),'sonic')});
+
+test('Neon Waves PRO renders through the stable Canvas rather than the failing WebGL shader',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const source=await readFile(new URL('../src/visualizer/MusicVisualizer.jsx',import.meta.url),'utf8');
+ assert.match(source,/mode==='neon-waves'\?\s*<SonicLines\b/);
+ assert.ok(VISUAL_MODES.some(([id])=>id==='neon-waves'));
+});
