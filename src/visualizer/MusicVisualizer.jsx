@@ -14,7 +14,7 @@ function createStars(count){
  return Array.from({length:count},(_,i)=>{seed=(seed*1664525+1013904223)>>>0;const a=seed/4294967295;seed=(seed*1664525+1013904223)>>>0;return {x:a,y:seed/4294967295,r:1+(i%3)*.65,phase:i*2.39996}});
 }
 const stars=createStars(100);
-export default function MusicVisualizer({song,playing,bins=[],visible=true}){
+export default function MusicVisualizer({song,playing,bins=[],visible=true,signalStatus='inactive'}){
  const canvas=useRef(null),frame=useRef(0),spectrum=useRef(Array(32).fill(0)),beat=useRef(0);
  const [settings,setSettings]=useState(read),[reduced,setReduced]=useState(()=>window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false);
  const [coverUrl,setCoverUrl]=useState(null);
@@ -81,7 +81,7 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true}){
     <button className="visualizer-maximize" aria-pressed={maximized} aria-label={maximized?'Wyłącz animowane tło':'Włącz animowane tło całej aplikacji'} title={maximized?'Wyłącz animowane tło':'Animowane tło aplikacji'} onClick={()=>setMaximized(v=>!v)}>{maximized?<Minimize2 size={18}/>:<Maximize2 size={18}/>}</button>
    </div>
   </div>
-  {diagnostic&&<div className="visualizer-diagnostic" role="status" aria-label="Poziomy analizatora audio"><span>{playing?'ODTWARZANIE':'PAUZA'} · {levels.bass+levels.mids+levels.treble>2?'SYGNAŁ':'BRAK SYGNAŁU'}</span>{[['Bas',levels.bass],['Średnie',levels.mids],['Wysokie',levels.treble]].map(([name,n])=><label key={name}>{name}<meter min="0" max="100" value={n}/><strong>{n}%</strong></label>)}</div>}
+  {diagnostic&&<div className="visualizer-diagnostic" role="status" aria-label="Poziomy analizatora audio"><span>{playing?'ODTWARZANIE':'PAUZA'} · {signalStatus==='error'?'BŁĄD ANALIZATORA':signalStatus==='inactive'?'ANALIZATOR NIEAKTYWNY':levels.bass+levels.mids+levels.treble>2?'SYGNAŁ':'CISZA / BRAK FFT'}</span>{[['Bas',levels.bass],['Średnie',levels.mids],['Wysokie',levels.treble]].map(([name,n])=><label key={name}>{name}<meter min="0" max="100" value={n}/><strong>{n}%</strong></label>)}</div>}
   {maximized?createPortal(scene,document.body):scene}
  </section>;
 }
