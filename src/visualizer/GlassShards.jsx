@@ -2,12 +2,12 @@ import React,{useEffect,useRef} from 'react';
 import {spectralFeatures,updateVisualDynamics} from './audioDynamics.js';
 
 // Layered glass geometry uses Canvas 2D for dependable mobile performance.
-const pieces=Array.from({length:52},(_,i)=>{
+const pieces=Array.from({length:38},(_,i)=>{
  const r=(x)=>{const n=Math.sin(x*127.1+19.73)*43758.5453;return n-Math.floor(n)};
- const depth=i<14?0:i<36?1:2,angle=r(i+4)*Math.PI*2;
+ const depth=i<11?0:i<27?1:2,angle=r(i+4)*Math.PI*2;
  const radius=(.10+r(i+39)*.35)*(depth===2?1.25:1);
  return {depth,band:i%12,angle,x:Math.cos(angle)*radius,y:Math.sin(angle)*radius*.72,
-  size:(depth===0?.13:depth===1?.083:.035)*(.6+r(i+72)*.85),
+  size:(depth===0?.19:depth===1?.125:.075)*(.6+r(i+72)*.85),
   tilt:r(i+83)*Math.PI*2,phase:r(i+95)*Math.PI*2,shape:r(i+17)};
 });
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -35,14 +35,14 @@ export default function GlassShards({bins=[],playing=false,intensity=65,reduced=
    const scale=Math.min(w,h),cx=w*.5,cy=h*.49;
    // Soft atmosphere behind the central sculpture; never wash out the black scene.
    const halo=ctx.createRadialGradient(cx,cy,scale*.02,cx,cy,scale*.54);
-   halo.addColorStop(0,'rgba(84,117,173,'+(.045+energy*.13+bass*.10)*power+')');
-   halo.addColorStop(.55,'rgba(30,54,99,'+(.025+voice*.07)*power+')');
+   halo.addColorStop(0,'rgba(84,117,173,'+(.11+energy*.24+bass*.17)*power+')');
+   halo.addColorStop(.55,'rgba(30,54,99,'+(.045+voice*.13)*power+')');
    halo.addColorStop(1,'rgba(4,8,20,0)');
    ctx.fillStyle=halo;ctx.fillRect(0,0,w,h);
    const time=opts.reduced?0:t*.001;
    for(const p of pieces){
     const sustain=dynamics.sustain[p.band],attack=dynamics.transient[p.band];
-    const center=p.depth===0?.42:p.depth===1?.85:1.28;
+    const center=p.depth===0?.65:p.depth===1?.96:1.25;
     const kick=p.band<4?beat:0;
     const spread=1+(.08*bass+.19*kick+.13*flux)*power;
     const oscillation=opts.reduced?0:Math.sin(time*(.18+p.depth*.09)+p.phase)*(.006+.018*sustain);
@@ -56,21 +56,36 @@ export default function GlassShards({bins=[],playing=false,intensity=65,reduced=
     const v=coords.map(([x,y],j)=>{const dx=(x+(j===2?p.shape*.28:0))*size,dy=y*size;return [px+dx*ca-dy*sa,py+dx*sa+dy*ca]});
     ctx.beginPath();ctx.moveTo(...v[0]);for(let j=1;j<v.length;j++)ctx.lineTo(...v[j]);ctx.closePath();
     const grad=ctx.createLinearGradient(v[0][0],v[0][1],v[2][0],v[2][1]);
-    const opacity=(p.depth===0?.07:p.depth===1?.105:.16)*power;
-    grad.addColorStop(0,'rgba(204,236,255,'+(opacity+.09*sustain)+')');
-    grad.addColorStop(.40,'rgba(81,133,191,'+(opacity*.22)+')');
-    grad.addColorStop(.75,'rgba(97,78,147,'+(opacity*.3)+')');
-    grad.addColorStop(1,'rgba(180,225,255,'+(opacity*.8)+')');
+    // Premium neon glass: saturated interior refraction and multi-pass emission.
+    const cyan=p.band%3!==1,edge=cyan?'92,227,255':'239,96,255';
+    const edgeHex=cyan?'#46dfff':'#f04bff';
+    const opacity=(p.depth===0?.19:p.depth===1?.24:.30)*(.65+.35*power);
+    grad.addColorStop(0,'rgba(210,246,255,'+(opacity+.11*sustain)+')');
+    grad.addColorStop(.24,cyan?'rgba(49,172,218,'+(opacity*.54)+')':'rgba(149,59,209,'+(opacity*.56)+')');
+    grad.addColorStop(.72,'rgba(22,23,80,'+(opacity*.55)+')');
+    grad.addColorStop(1,'rgba(221,231,255,'+(opacity+.09*attack)+')');
     ctx.fillStyle=grad;ctx.fill();
-    const glare=(.11+.35*sustain+.68*attack+(p.band>8?.4*attack:0))*power;
-    ctx.lineWidth=p.depth===2?.75:1.05;
-    ctx.strokeStyle='rgba(191,227,252,'+clamp(glare,0,.88)+')';
-    ctx.shadowColor=p.band>8?'#a287ed':'#86d8ff';
-    ctx.shadowBlur=(2+9*attack+4*voice)*power;
-    ctx.stroke();ctx.shadowBlur=0;
+    const glare=clamp((.35+.26*sustain+.58*attack)*(.75+.25*power),0,1);
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    // Wide diffusion and close bloom: both visible even between transients.
+    ctx.strokeStyle='rgba('+edge+','+clamp(glare*.21,0,.38)+')';
+    ctx.lineWidth=p.depth===2?5:9;
+    ctx.shadowColor=edgeHex;ctx.shadowBlur=22+12*attack;ctx.stroke();
+    ctx.strokeStyle='rgba('+edge+','+clamp(glare*.62,0,.85)+')';
+    ctx.lineWidth=p.depth===2?2:3.1;
+    ctx.shadowBlur=10+16*attack;ctx.stroke();
+    ctx.strokeStyle='rgba(233,252,255,'+clamp(.30+.5*glare,0,.95)+')';
+    ctx.lineWidth=p.depth===2?.75:1.25;ctx.shadowBlur=4;ctx.stroke();
+    // Moving glints and prismatic fold — reacts continuously to vocal range.
     ctx.beginPath();ctx.moveTo(...v[0]);ctx.lineTo(...v[2]);
-    ctx.strokeStyle='rgba(167,207,241,'+(.035+voice*.20+voiceAttack*.28)*power+')';
-    ctx.lineWidth=.65;ctx.stroke();
+    ctx.strokeStyle='rgba('+(cyan?'100,226,255':'249,115,246')+','+clamp(.18+voice*.45+voiceAttack*.40,0,.88)+')';
+    ctx.lineWidth=1.1;ctx.shadowColor=edgeHex;ctx.shadowBlur=8+14*voiceAttack;ctx.stroke();
+    const glint=opts.reduced?.42:(.5+.5*Math.sin(time*(.42+.18*sustain)+p.phase));
+    const gx=v[0][0]+(v[1][0]-v[0][0])*glint,gy=v[0][1]+(v[1][1]-v[0][1])*glint;
+    ctx.beginPath();ctx.arc(gx,gy,clamp(1.2+attack*2.5,.7,4),0,Math.PI*2);
+    ctx.fillStyle='rgba(238,253,255,'+clamp(.28+sustain*.32+attack*.5,0,.95)+')';
+    ctx.shadowColor=edgeHex;ctx.shadowBlur=10+18*attack;ctx.fill();
+    ctx.restore();
     if(p.depth===2 && attack>.12){
      ctx.beginPath();ctx.moveTo(...v[1]);ctx.lineTo(v[1][0]+Math.cos(p.angle)*size*(.3+flux),v[1][1]+Math.sin(p.angle)*size*(.3+flux));
      ctx.strokeStyle='rgba(226,245,255,'+clamp(attack*.65*power,0,.8)+')';ctx.lineWidth=.7;ctx.stroke();
