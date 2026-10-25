@@ -23,7 +23,7 @@ function App(){
  const toggleLike=id=>setLikes(v=>v.includes(id)?v.filter(x=>x!==id):[...v,id]);
  const nav=id=>{setView(id);setMobileMenu(false)};
  const track=(s)=> <button key={s.id} className={`song-row ${song.id===s.id?'selected':''}`} onClick={()=>choose(songs.findIndex(x=>x.id===s.id))}>{cover(s.art,'track-art')}<span className="song-meta"><strong>{s.title}</strong><small>{s.artist} · {s.album}</small></span><span className="song-duration">{s.duration}</span><ChevronRight size={16}/></button>;
- return <div className="app-shell">
+ return <div className="app-shell"><svg aria-hidden="true" width="0" height="0" style={{position:"absolute",pointerEvents:"none"}}><defs><filter id="shutter-lens" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.016 0.035" numOctaves="2" seed="8" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G"/></filter></defs></svg>
  <aside className={`sidebar ${mobileMenu?'open':''}`}>
   <div className="brand"><div className="brand-mark"><span/><span/><span/><span/></div><span>shutter<span className="brand-dot">.</span></span><button className="menu-close" onClick={()=>setMobileMenu(false)} aria-label="Zamknij menu"><X size={19}/></button></div>
   <div className="side-label">ODKRYWAJ</div><nav>{views.slice(0,4).map(({id,label,Icon})=><button key={id} className={view===id?'nav-active':''} onClick={()=>nav(id)}><Icon size={19}/><span>{label}</span>{view===id&&<span className="nav-dot"/>}</button>)}</nav>
