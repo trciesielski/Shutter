@@ -1,7 +1,7 @@
 import React,{useEffect,useRef} from 'react';
 import {spectralFeatures,updateVisualDynamics} from './audioDynamics.js';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const colors=['#31eaff','#5b7dff','#c269ff','#ff4fc8','#ff956b','#4aeeae'];
+const colors=['#2be9ff','#527eff','#ad5bff','#ff43d1','#ff955b','#52ffc7'];
 export default function SonicLines({bins=[],playing=false,intensity=65,reduced=false,background=false}){
  const canvas=useRef(null),inputs=useRef({});
  inputs.current={bins,playing,intensity,reduced,background};
@@ -26,7 +26,7 @@ export default function SonicLines({bins=[],playing=false,intensity=65,reduced=f
    const voice=dynamics.voiceSustain,attack=dynamics.voiceTransient,beat=dynamics.beat;
    const time=reduced?0:t*.001;
    const cy=h*.49,unit=Math.min(w,h),wide=h>w;
-   const amplitude=unit*(.038+bass*.15+mid*.07+beat*.065)*(.5+.5*power);
+   const amplitude=unit*(.032+bass*.13+mid*.09+voice*.055+beat*.07)*(.55+.45*power);
    // Dark navy background, wide soft atmosphere, preserved negative space.
    const bg=ctx.createRadialGradient(w*.5,cy,unit*.015,w*.5,cy,unit*.72);
    bg.addColorStop(0,'rgba(25,38,85,'+(.17+.2*features.energy)*power+')');
@@ -46,11 +46,14 @@ export default function SonicLines({bins=[],playing=false,intensity=65,reduced=f
     const band=Math.floor(i/count*12),level=s[band],transient=tr[band];
     const x=(i+.5)*w/count;
     const envelope=Math.sin(Math.PI*i/count)**.62;
-    const height=unit*(.008+e*.25+level*.082+transient*.10+beat*.016)*envelope*power;
+    const height=unit*(.008+e*.29+level*.10+transient*.13+beat*.026)*envelope*power;
     const hue=colors[Math.min(5,Math.floor(i/count*6))];
-    ctx.strokeStyle=hue;ctx.globalAlpha=.25+.58*clamp(e+level*.6+transient*.5,0,1);
-    ctx.lineWidth=barWidth;ctx.shadowColor=hue;ctx.shadowBlur=7+10*transient;
-    ctx.beginPath();ctx.moveTo(x,cy-height);ctx.lineTo(x,cy+height);ctx.stroke();
+    const light=clamp(.30+.50*e+.20*level+.22*transient,0,1);
+    ctx.beginPath();ctx.moveTo(x,cy-height);ctx.lineTo(x,cy+height);
+    ctx.globalAlpha=light*.34;ctx.strokeStyle=hue;ctx.lineWidth=barWidth*2.6;
+    ctx.shadowColor=hue;ctx.shadowBlur=14+14*transient;ctx.stroke();
+    ctx.globalAlpha=light;ctx.lineWidth=Math.max(.8,barWidth*.68);ctx.shadowBlur=4+5*transient;ctx.stroke();
+    ctx.globalAlpha=clamp(light*.55,0,.8);ctx.strokeStyle='#d6fbff';ctx.lineWidth=.65;ctx.shadowBlur=0;ctx.stroke();
    }
    ctx.shadowBlur=0;ctx.globalAlpha=1;
    // Multiple distinct filament families; center movement comes from voice and middle frequencies.
@@ -64,17 +67,19 @@ export default function SonicLines({bins=[],playing=false,intensity=65,reduced=f
      const nx=x/w;
      const focus=Math.pow(Math.sin(Math.PI*nx),.62);
      const angle=nx*Math.PI*(family===0?3.3:family===1?4.3:family===2?5.3:6.3);
-     const phase=(i*.27)+time*(.42+.065*family)*(playing?1:0);
+     const phase=(i*.27)+time*(.27+.065*family)*(playing?1:0)+voice*.42;
      const wave=Math.sin(angle-phase)*.66+Math.sin(angle*.58+phase*.45+i*.38)*.34;
-     const modulator=(.40+.65*focus)*(1+.33*mid+.35*attack+.24*beat);
+     const modulator=(.34+.69*focus)*(1+.30*mid+.58*attack+.36*beat);
      const y=cy+shift+wave*amp*modulator+Math.sin(nx*21+phase)*unit*.007*voice;
      if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
     }
-    const alpha=clamp((.24+.31*sustain+.24*voice+.42*transient)*(.6+.4*power),.1,.93);
-    ctx.globalAlpha=alpha;
-    ctx.strokeStyle=hue;ctx.lineWidth=i%5===0?1.6:1.0;
-    ctx.shadowBlur=12+12*transient;ctx.shadowColor=hue;ctx.stroke();
-    ctx.shadowBlur=0;ctx.globalAlpha=1;
+    const alpha=clamp((.30+.33*sustain+.34*voice+.40*transient)*(.6+.4*power),.12,.96);
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    ctx.globalAlpha=alpha*.26;ctx.strokeStyle=hue;ctx.lineWidth=i%5===0?5:3;
+    ctx.shadowBlur=17+16*transient;ctx.shadowColor=hue;ctx.stroke();
+    ctx.globalAlpha=alpha;ctx.lineWidth=i%5===0?1.65:1.05;ctx.shadowBlur=7;ctx.stroke();
+    if(i%4===0){ctx.globalAlpha=alpha*.50;ctx.strokeStyle='#c8f8ff';ctx.lineWidth=.65;ctx.shadowBlur=2;ctx.stroke()}
+    ctx.restore();
    }
    // Brighter spectral baseline and musical glints, no text or logo.
    ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);
