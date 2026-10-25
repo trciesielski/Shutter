@@ -241,3 +241,24 @@
 .playlist-track-option span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .playlist-track-option input{accent-color:var(--accent)}
 .playlist-track-option button{padding:8px 10px}
+
+/* Library V2: never overflow narrow mobile card; anchored song actions */
+.library-track{display:flex;align-items:center;gap:5px;min-width:0;width:100%;position:relative;padding:7px 6px;border-radius:12px}
+.library-track.selected,.library-track:hover{background:var(--surface2)}
+.library-track-main{display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-align:left;padding:3px;overflow:hidden}
+.library-track-art{width:42px;height:42px;flex-shrink:0;border-radius:10px;display:grid;place-items:center;color:#d0baff;background:linear-gradient(140deg,#423168,#171b36)}
+.library-track-title{min-width:0;flex:1;overflow:hidden}
+.library-track-title strong,.library-track-title small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.library-track-title strong{font-size:13px}.library-track-title small{font-size:11px;color:var(--muted);margin-top:4px}
+.library-track-menu-trigger{flex:0 0 42px;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:var(--muted)}
+.library-track-menu-trigger:focus-visible,.library-track-main:focus-visible{outline:2px solid var(--accent)}
+.library-track-popover{position:absolute;right:2px;top:calc(100% - 3px);width:min(285px,calc(100vw - 55px));max-height:310px;overflow-y:auto;z-index:35;border-radius:16px;background:var(--surface);box-shadow:0 15px 48px rgba(0,0,0,.35);border:1px solid var(--line);padding:8px;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+.library-track-popover>button{display:flex;align-items:center;gap:10px;padding:12px;width:100%;text-align:left;border-radius:10px;font-size:12px;min-width:0;overflow-wrap:anywhere}
+.library-track-popover>button:hover{background:var(--surface2)}.library-track-popover>button:disabled{opacity:.45}
+.library-track-menu-caption{display:block;padding:8px 12px 4px;color:var(--muted);font-size:10px;letter-spacing:1px}
+.library-track-divider{height:1px;background:var(--line);margin:6px 0}
+.library-track-danger{color:#f3899e}
+.library-track-create{display:flex;gap:6px;padding:8px}
+.library-track-create input{min-width:0;flex:1;width:90px;padding:9px;background:var(--surface2);color:var(--text);border:1px solid var(--line);border-radius:8px}
+.library-track-create button{background:var(--accent);color:#fff;border-radius:8px;padding:8px}
+@media(max-width:510px){.library-track-popover{position:fixed;right:14px;left:14px;top:auto;bottom:calc(215px + env(safe-area-inset-bottom,0px));width:auto;max-height:min(390px,55vh)}}
