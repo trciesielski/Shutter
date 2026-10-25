@@ -1,4 +1,4 @@
-export const VISUAL_MODES=[['auto','Auto'],['neon','Neon Spectrum PRO'],['minimal','Minimal'],['cover','Cover Motion'],['orb','Glass Orb'],['particles','Particle Glass'],['mirage','Glass Mirage']];
+export const VISUAL_MODES=[['auto','Auto'],['neon','Neon Spectrum PRO'],['shards','Glass Shards PRO'],['minimal','Minimal'],['cover','Cover Motion'],['orb','Glass Orb'],['particles','Particle Glass'],['mirage','Glass Mirage']];
 export function resolveVisualMode(mode,hasCover,reducedMotion){
  if(mode!=='auto')return VISUAL_MODES.some(([id])=>id===mode)?mode:'minimal';
  if(reducedMotion)return hasCover?'cover':'minimal';
