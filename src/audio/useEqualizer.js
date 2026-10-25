@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {equalPowerCurves} from './crossfadeMath.js';
-import {spectrumBands} from './spectrumBands.js';
+import {spectrumBands,pcmSpectrumBands} from './spectrumBands.js';
 export const FREQUENCIES=[31,62,125,250,500,1000,2000,4000,8000,16000];
 export const PRESETS={Flat:[0,0,0,0,0,0,0,0,0,0],Bass:[6,5,4,2,0,0,-1,-1,0,0],Rock:[4,3,1,-1,-2,0,2,3,3,2],Vocal:[-2,-2,-1,0,2,4,4,2,0,-1],Electronic:[5,4,2,0,-1,1,3,4,3,2],Cinematic:[4,3,2,0,1,2,3,2,1,1]};
 const KEY='shutter-eq-v1';
@@ -45,8 +45,10 @@ export function useEqualizer(decks){
     g.inputAnalyser.getFloatTimeDomainData(samples);
     let sum=0,peak=0;for(let i=0;i<samples.length;i++){const v=samples[i];sum+=v*v;peak=Math.max(peak,Math.abs(v))}
     const rms=Math.sqrt(sum/samples.length);
-    setBins(spectrumBands(spectrum,g.context.sampleRate));
-    setSignalDebug({rms:Math.round(rms*1000)/10,peak:Math.round(peak*1000)/10,context:g.context.state});
+    const fft=spectrumBands(spectrum,g.context.sampleRate);
+    const fallback=fft.every(v=>v===0)&&rms>.002;
+    setBins(fallback?pcmSpectrumBands(samples,g.context.sampleRate):fft);
+    setSignalDebug({rms:Math.round(rms*1000)/10,peak:Math.round(peak*1000)/10,context:g.context.state,source:fallback?'PCM':'FFT'});
     setSignalStatus(g.context.state==='running'?'connected':g.context.state);
     last=time;
    }
