@@ -1,3 +1,4 @@
+import {spectrumBands,spectrumEnergy} from '../src/audio/spectrumBands.js';
 import {resolveVisualMode,VISUAL_MODES} from '../src/visualizer/modes.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -68,4 +69,16 @@ test('visualizer auto picks cover, mirage or reduced motion minimal',()=>{
  assert.equal(resolveVisualMode('orb',false,true),'orb');
  assert.equal(resolveVisualMode('invalid',false,false),'minimal');
  assert.equal(new Set(VISUAL_MODES.map(v=>v[0])).size,VISUAL_MODES.length);
+});
+
+test('FFT bands remain silent for silence and respond to real frequencies',()=>{
+ const zero=spectrumBands(new Uint8Array(512),44100);
+ assert.equal(zero.length,32);
+ assert.ok(zero.every(x=>x===0));
+ const low=new Uint8Array(512);low[2]=255;low[3]=255;
+ const high=new Uint8Array(512);high[180]=255;high[181]=255;
+ const lo=spectrumEnergy(spectrumBands(low,44100));
+ const hi=spectrumEnergy(spectrumBands(high,44100));
+ assert.ok(lo.bass>lo.treble);
+ assert.ok(hi.treble>hi.bass);
 });
