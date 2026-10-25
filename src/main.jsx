@@ -19,6 +19,7 @@ function App(){
  const glass=useGlassLook();
 
  const [playerExpanded,setPlayerExpanded]=useState(false);
+ const [seekPreview,setSeekPreview]=useState(null);
  const [playerListId,setPlayerListId]=useState(null);
  const [view,setView]=useState('home'),[theme,setTheme]=useState('auto'),[query,setQuery]=useState(''),[mobileMenu,setMobileMenu]=useState(false);
  const durationSeconds = songDuration => {const parts=songDuration.split(':').map(Number);return parts.reduce((a,n)=>a*60+n,0)};
@@ -39,7 +40,8 @@ function App(){
  const importLocal=files=>{audio.importFiles(files);setView('library')};
  const activePlaying=audio.state==='playing';
  const playToggle=()=>audio.toggle();
- const seekTo=value=>audio.seek(value);
+ const seekTo=value=>{audio.seek(value);setSeekPreview(null)};
+ const seekPercent=seekPreview??(totalSeconds>0?Math.min(100,Math.max(0,currentSeconds/totalSeconds*100)):0);
  const nav=id=>{setView(id);setMobileMenu(false)};
  return <div className="app-shell"><svg aria-hidden="true" width="0" height="0" style={{position:"absolute",pointerEvents:"none"}}><defs><filter id="shutter-lens" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.016 0.035" numOctaves="2" seed="8" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G"/></filter></defs></svg>
  <aside className={`sidebar ${mobileMenu?'open':''}`}>
@@ -83,7 +85,7 @@ function App(){
   <div className="player-bar player-bar-v5">
    <div className="player-song"><button className="player-song-expand" aria-label={playerExpanded?"Zwiń panel playlisty":"Rozwiń panel playlisty"} aria-expanded={playerExpanded} onClick={()=>song&&setPlayerExpanded(v=>!v)} disabled={!song}><div className="player-song-meta"><strong>{song?.title||'Brak utworu'}</strong><small>{song?.artist||'Dodaj muzykę'} · {song?.album||'Biblioteka'}</small></div><ChevronRight className={playerExpanded?"expanded-chevron":""} size={17}/></button></div>
    <div className="player-middle">
-    <div className="progress-line"><span>{formatClock(currentSeconds)}</span><input type="range" min="0" max="100" step=".1" value={totalSeconds>0?audio.seconds/totalSeconds*100:0} onChange={e=>seekTo(Number(e.target.value))} aria-label="Pozycja utworu" style={{"--seek-progress":`${totalSeconds>0?audio.seconds/totalSeconds*100:0}%`}}/><span>{formatClock(totalSeconds)}</span></div>
+    <div className="progress-line"><span>{formatClock(seekPreview!==null&&totalSeconds>0?totalSeconds*seekPreview/100:currentSeconds)}</span><input type="range" min="0" max="100" step=".1" value={seekPercent} disabled={!song||totalSeconds<=0} onChange={e=>setSeekPreview(Number(e.target.value))} onPointerUp={e=>seekTo(Number(e.currentTarget.value))} onTouchEnd={e=>seekTo(Number(e.currentTarget.value))} onKeyUp={e=>seekTo(Number(e.currentTarget.value))} onBlur={e=>{if(seekPreview!==null)seekTo(Number(e.currentTarget.value))}} aria-label="Pozycja utworu" style={{"--seek-progress":`${seekPercent}%`}}/><span>{formatClock(totalSeconds)}</span></div>
     <div className="player-controls">
      <button aria-label="Poprzedni" onClick={prev}><SkipBack fill="currentColor"/></button>
      <button aria-label={activePlaying?'Pauza':'Odtwórz'} className={`play-button ${activePlaying?"is-playing":""}`} onClick={playToggle}>{activePlaying?<span className="pause-audio-pulse" aria-hidden="true"><span/><span/></span>:<Play fill="currentColor"/>}</button>
