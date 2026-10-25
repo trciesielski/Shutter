@@ -92,3 +92,5 @@ html.shutter-visual-focus .music-visualizer .visualizer-head{display:flex!import
 html.shutter-visual-focus .music-visualizer .visualizer-mode select{max-width:155px}
 html.shutter-visual-focus .music-visualizer .visualizer-head-actions{gap:5px}
 @media(max-width:580px){html.shutter-visual-focus .music-visualizer .visualizer-head{padding:4px 2px 0!important}.visualizer-focus-toggle{width:35px;height:35px}}
+
+.visualizer-signal-detail{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;line-height:1.5}
