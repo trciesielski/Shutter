@@ -1,19 +1,15 @@
-import {useEffect,useState} from 'react';
-const KEY='shutter-user-playlists-v1';
-function load(){try{const data=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(data)?data.filter(x=>typeof x.id==='string'&&Array.isArray(x.tracks)):[]}catch{return []}}
-export default function LocalPlaylists({tracks,onPlay}){
- const [lists,setLists]=useState(load),[name,setName]=useState(''),[selected,setSelected]=useState('');
- useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(lists))}catch{}},[lists]);
- const add=()=>{const n=name.trim();if(!n)return;setLists(p=>p.concat({id:crypto.randomUUID?.()||String(Date.now()),name:n,tracks:[]}));setName('')};
- const toggle=(id,trackId)=>setLists(p=>p.map(x=>x.id===id?{...x,tracks:x.tracks.includes(trackId)?x.tracks.filter(y=>y!==trackId):x.tracks.concat(trackId)}:x));
+import React,{useState} from 'react';
+export default function LocalPlaylists({tracks,onPlay,playlists}){
+ const [name,setName]=useState('');
+ const {lists,create,toggleTrack,remove}=playlists;
  return <section className="local-playlists">
-  <div className="playlist-new"><input aria-label="Nazwa nowej playlisty" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&add()} placeholder="Nazwa nowej playlisty"/><button onClick={add} disabled={!name.trim()}>Utwórz playlistę</button></div>
-  {lists.length===0&&<p className="playlist-hint">Utwórz pierwszą playlistę i dodaj do niej utwory z biblioteki.</p>}
+  <div className="playlist-new"><input aria-label="Nazwa nowej playlisty" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){create(name);setName('')}}} placeholder="Nazwa nowej playlisty"/><button onClick={()=>{create(name);setName('')}} disabled={!name.trim()}>Utwórz playlistę</button></div>
+  {lists.length===0&&<p className="playlist-hint">Utwórz pierwszą playlistę albo dodaj utwór do Ulubionych.</p>}
   {lists.map(list=><div key={list.id} className="playlist-user-card">
-   <div className="playlist-user-heading"><strong>{list.name}</strong><span>{list.tracks.length} utworów</span><button aria-label={'Usuń playlistę '+list.name} onClick={()=>setLists(p=>p.filter(x=>x.id!==list.id))}>Usuń</button></div>
-   {tracks.map((track,i)=><div key={track.id} className="playlist-track-option"><input type="checkbox" aria-label={`Dodaj ${track.title} do playlisty ${list.name}`} checked={list.tracks.includes(track.id)} onChange={()=>toggle(list.id,track.id)}/><span>{track.title}</span><button type="button" onClick={()=>onPlay(i)}>Odtwórz</button></div>)}
-   {!tracks.length&&<p className="playlist-hint">Najpierw dodaj pliki muzyczne w Bibliotece.</p>}
+   <div className="playlist-user-heading"><strong>{list.name}</strong><span>{list.tracks.length} utworów</span><button aria-label={'Usuń playlistę '+list.name} onClick={()=>remove(list.id)}>Usuń</button></div>
+   {tracks.filter(track=>list.tracks.includes(track.id)).map(track=><div key={track.id} className="playlist-track-option"><span>{track.title}</span><button type="button" onClick={()=>onPlay(tracks.findIndex(t=>t.id===track.id))}>Odtwórz</button><button type="button" onClick={()=>toggleTrack(list.id,track.id)} aria-label={'Usuń '+track.title+' z '+list.name}>Usuń z listy</button></div>)}
+   {!list.tracks.length&&<p className="playlist-hint">Ta playlista jest pusta. Dodaj utwór z Biblioteki.</p>}
   </div>)}
-  <p className="playlist-hint">Playlisty są zapisane w tej przeglądarce. Pliki muzyczne przechowuje lokalna baza IndexedDB.</p>
- </section>
+  <p className="playlist-hint">Playlisty zapisujemy lokalnie w tej przeglądarce.</p>
+ </section>;
 }
