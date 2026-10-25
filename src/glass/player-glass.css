@@ -1,12 +1,12 @@
-/* Shutter Glass V3: one canonical player surface across web platforms. */
+/* Shutter Glass V4: one canonical player surface across web platforms. */
 .shutter-glass{
  position:fixed;z-index:30;left:14px;right:14px;bottom:calc(12px + env(safe-area-inset-bottom,0px));
  border-radius:30px;isolation:isolate;
  --touch-x:50%;--touch-y:5%;
- background:linear-gradient(130deg,rgba(255,255,255,.035),rgba(255,255,255,.006) 54%,rgba(130,110,210,.014)),rgba(19,20,37,.11);
- box-shadow:inset 0 1px rgba(255,255,255,.12),inset 0 -1px rgba(230,226,255,.05),0 15px 38px rgba(0,0,0,.17);
- -webkit-backdrop-filter:blur(5px) saturate(102%);
- backdrop-filter:blur(17px) saturate(140%);
+ background:linear-gradient(130deg,rgba(255,255,255,.035),rgba(255,255,255,.006) 54%,rgba(130,110,210,.014)),rgba(17,18,30,.33);
+ box-shadow:inset 0 1px rgba(255,255,255,.045),inset 0 -1px rgba(230,226,255,.025),0 15px 38px rgba(0,0,0,.17);
+ -webkit-backdrop-filter:blur(9px) saturate(72%);
+ backdrop-filter:blur(9px) saturate(72%);
  overflow:hidden;transition:background .2s ease,transform .18s ease;
 }
 .shutter-glass:before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
@@ -14,7 +14,7 @@
  opacity:.35;transition:opacity .2s ease}
 .shutter-glass.is-pressed:before{opacity:1}
 :root[data-theme=light] .shutter-glass{
- background:linear-gradient(130deg,rgba(255,255,255,.18),rgba(245,240,255,.045)),rgba(221,218,239,.10);
+ background:linear-gradient(130deg,rgba(255,255,255,.18),rgba(245,240,255,.045)),rgba(227,227,235,.28);
  box-shadow:inset 0 1px rgba(255,255,255,.4),0 14px 35px rgba(55,50,90,.13)
 }
 .shutter-glass .player-bar{
@@ -65,7 +65,7 @@
 /* Optical edge light: a restrained lens rim, not a visible outline. */
 .shutter-glass:after{
  content:"";position:absolute;z-index:0;inset:0;pointer-events:none;border-radius:inherit;
- background:radial-gradient(ellipse 80% 22% at 50% -7%,rgba(255,255,255,.11),transparent 100%),radial-gradient(ellipse 55% 18% at 50% 107%,rgba(176,151,245,.075),transparent 100%);
- box-shadow:inset 0 2px 2px -2px rgba(255,255,255,.32),inset 0 -2px 3px -3px rgba(226,214,255,.28);
+ background:radial-gradient(ellipse 80% 22% at 50% -7%,rgba(255,255,255,.045),transparent 100%),radial-gradient(ellipse 55% 18% at 50% 107%,rgba(176,151,245,.035),transparent 100%);
+ box-shadow:inset 0 1px 2px -2px rgba(255,255,255,.10),inset 0 -1px 2px -2px rgba(226,214,255,.08);
 }
 :root[data-theme=light] .shutter-glass:after{opacity:.65}
