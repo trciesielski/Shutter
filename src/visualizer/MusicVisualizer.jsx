@@ -1,15 +1,10 @@
-import React,{useEffect,useMemo,useRef,useState} from 'react';
+import React,{useEffect,useRef,useState} from 'react';
+import {VISUAL_MODES,resolveVisualMode} from './modes.js';
 import './visualizer.css';
 
-export const VISUAL_MODES=[['auto','Auto'],['minimal','Minimal'],['cover','Cover Motion'],['orb','Glass Orb'],['particles','Particle Glass'],['mirage','Glass Mirage']];
 const KEY='shutter-visualizer-v1';
 const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
 const read=()=>{try{const x=JSON.parse(localStorage.getItem(KEY)||'{}');return {mode:VISUAL_MODES.some(v=>v[0]===x.mode)?x.mode:'auto',intensity:clamp(Number(x.intensity)||65,10,100)}}catch{return {mode:'auto',intensity:65}}};
-function visualType(mode,art,reduced){
- if(mode!=='auto')return mode;
- if(reduced)return art?'cover':'minimal';
- return art?'cover':'mirage';
-}
 function createStars(count){
  let seed=1979;
  return Array.from({length:count},(_,i)=>{seed=(seed*1664525+1013904223)>>>0;const a=seed/4294967295;seed=(seed*1664525+1013904223)>>>0;return {x:a,y:seed/4294967295,r:1+(i%3)*.65,phase:i*2.39996}});
@@ -22,7 +17,7 @@ export default function MusicVisualizer({song,playing,bins=[],onPlay,onImport}){
  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(settings))}catch{}},[settings]);
  useEffect(()=>{const mq=window.matchMedia('(prefers-reduced-motion: reduce)');const update=()=>setReduced(mq.matches);mq.addEventListener?.('change',update);return()=>mq.removeEventListener?.('change',update)},[]);
  useEffect(()=>{if(!song?.coverBlob){setCoverUrl(null);return}const u=URL.createObjectURL(song.coverBlob);setCoverUrl(u);return()=>URL.revokeObjectURL(u)},[song?.coverBlob]);
- const mode=visualType(settings.mode,!!coverUrl,reduced);
+ const mode=resolveVisualMode(settings.mode,!!coverUrl,reduced);
  const input=useRef({});input.current={mode,playing,reduced,intensity:settings.intensity,bins};
  useEffect(()=>{
   const el=canvas.current,ctx=el?.getContext('2d',{alpha:true});if(!ctx)return;
