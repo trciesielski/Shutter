@@ -1,3 +1,4 @@
+import {spectralFeatures,updateVisualDynamics} from '../src/visualizer/audioDynamics.js';
 import {spectrumBands,spectrumEnergy,pcmSpectrumBands} from '../src/audio/spectrumBands.js';
 import {resolveVisualMode,VISUAL_MODES} from '../src/visualizer/modes.js';
 import test from 'node:test';
@@ -98,4 +99,23 @@ test('PCM fallback derives frequency energy from actual nonzero signal and zero 
  assert.equal(live.length,32);
  assert.ok(live.some(v=>v>0),'measured PCM should produce nonzero bands');
  assert.ok(spectrumEnergy(live).bass>spectrumEnergy(live).treble,'130 Hz bass should dominate treble');
+});
+
+test('eight-band dynamics tracks sustain, transients and silence independently',()=>{
+ const quiet=spectralFeatures(Array(32).fill(0));
+ assert.equal(quiet.bands.length,8);
+ assert.equal(quiet.flux,0);
+ const kick=Array(32).fill(0);kick[5]=90;kick[6]=85;
+ const first=spectralFeatures(kick,quiet.raw);
+ assert.ok(first.flux>0);
+ let state=updateVisualDynamics(null,first,85);
+ assert.ok(state.beat>0);
+ assert.ok(state.sustain[1]>0);
+ const steady=spectralFeatures(kick,first.raw);
+ state=updateVisualDynamics(state,steady,85);
+ assert.equal(steady.flux,0);
+ assert.ok(state.sustain[1]>0);
+ for(let i=0;i<35;i++)state=updateVisualDynamics(state,quiet,85);
+ assert.ok(state.beat<.05);
+ assert.ok(state.sustain[1]<.05);
 });
