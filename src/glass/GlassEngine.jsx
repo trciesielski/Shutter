@@ -23,6 +23,10 @@ vec3 scene(vec2 uv){
   base+=vec3(.17,.035,.30)*smoothstep(.65,.95,stripe)*.45;
   float diamond=abs(fract(uv.x*3.+uv.y*1.5)-.5);
   base+=vec3(.13,.04,.24)*smoothstep(.28,.5,diamond)*.25;
+  // Fine reference grid makes actual optical displacement obvious, even on mobile.
+  float gx=abs(fract(uv.x*11.)-.5),gy=abs(fract(uv.y*15.)-.5);
+  float grid=(1.-smoothstep(.008,.028,gx))+(1.-smoothstep(.008,.028,gy));
+  base+=vec3(.20,.25,.34)*min(grid,1.)*.31;
   return base;
 }
 vec3 glass(vec2 uv,vec2 center,vec2 radius,float shape){
@@ -46,10 +50,13 @@ void main(){
  vec2 p=(uv-center)/vec2(.28,.34);
  float dist=length(p);
  float a=1.-smoothstep(.96,1.01,dist);
- vec2 refr=normalize(p+vec2(.0001))*(exp(-pow((dist-.88)*10.,2.))*.042 + (1.-dist)*.012)*uStrength;
+ // Pronounced radial refraction; 0 means a flat image, 2 means strong distortion.
+ float edgeBend=exp(-pow((dist-.79)*4.6,2.));
+ float centerBend=max(0.,1.-dist*dist);
+ vec2 refr=normalize(p+vec2(.0001))*(edgeBend*.095+centerBend*.038)*uStrength;
  vec3 warped=scene(uv+refr);
  float highlight=exp(-pow((dist-.96)*22.,2.));
- warped+=highlight*vec3(.29,.23,.42);
+ warped+=highlight*vec3(.29,.23,.42)*(.45+.35*uStrength);
  warped+=a*.035;
  col=mix(col,warped,a);
  gl_FragColor=vec4(col,1.);
@@ -93,7 +100,8 @@ export default function GlassEngine(){
  <div className="glass-stage-caption">GPU REFRACTION / LIVE PREVIEW</div>
  </div>
  <div className="glass-config">
- <label htmlFor="glass-strength">Siła załamania: {Math.round(strength*100)}%</label><input id="glass-strength" type="range" min="0" max="2" step=".05" value={strength} onChange={e=>setStrength(Number(e.target.value))}/>
+ <label htmlFor="glass-strength">Siła załamania: {Math.round(strength*100)}% {strength===0?"· WYŁĄCZONE":strength>=1.5?"· MOCNE":""}</label><input id="glass-strength" type="range" min="0" max="2" step=".05" value={strength} onChange={e=>setStrength(Number(e.target.value))}/>
+ <button type="button" onClick={()=>setStrength(0)}>0% · Porównaj</button><button type="button" onClick={()=>setStrength(2)}>200% · Maks.</button>
  <button onClick={()=>setDark(v=>!v)}>{dark?'Przełącz na jasne tło':'Przełącz na ciemne tło'}</button>
  </div>
  <p className="glass-footnote">Silnik WebGL działa na Androidzie, Windowsie i macOS w zgodnych przeglądarkach. Natywne widoki i interfejs samochodowy wymagają osobnych implementacji.</p>
