@@ -500,3 +500,8 @@
 .history-row strong,.history-row small{flex-shrink:0;font-size:11px;color:var(--muted)}
 .library-track-cover-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .library-cover-play{position:relative;z-index:1}
+
+/* Make the seek control usable with a finger without changing its thin visual rail. */
+.shutter-glass .progress-line input[type="range"]{height:26px!important;background-clip:content-box;padding:11px 0;box-sizing:border-box;touch-action:none;position:relative;z-index:3}
+.shutter-glass .progress-line input[type="range"]::-webkit-slider-thumb{width:18px;height:18px}
+.shutter-glass .progress-line input[type="range"]:disabled{opacity:.45;cursor:default}
