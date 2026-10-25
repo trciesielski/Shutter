@@ -133,3 +133,5 @@ test('vocal-range proxy responds to midrange spectral data, not pure sub bass',(
 });
 
 test('Neon Pulse 360 PRO is selectable without changing existing modes',()=>{assert.ok(VISUAL_MODES.some(([id])=>id==='shards'));assert.equal(resolveVisualMode('shards',false,false),'shards')});
+
+test('Sonic Lines PRO remains independently selectable',()=>{assert.ok(VISUAL_MODES.some(([id])=>id==='sonic'));assert.equal(resolveVisualMode('sonic',false,false),'sonic')});
