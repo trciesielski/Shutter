@@ -82,3 +82,9 @@ test('FFT bands remain silent for silence and respond to real frequencies',()=>{
  assert.ok(lo.bass>lo.treble);
  assert.ok(hi.treble>hi.bass);
 });
+
+test('Neon Spectrum PRO remains an explicit selectable visualizer mode',()=>{
+ assert.ok(VISUAL_MODES.some(([id])=>id==='neon'));
+ assert.equal(resolveVisualMode('neon',false,false),'neon');
+ assert.equal(resolveVisualMode('neon',false,true),'neon');
+});
