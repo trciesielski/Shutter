@@ -16,11 +16,16 @@ const views = [{id:'home',label:'Start',Icon:House},{id:'library',label:'Bibliot
 function cover(art,extra=''){return <div className={`cover cover-${art} ${extra}`}><div className="cover-orb"/><div className="cover-horizon"/></div>}
 function App(){
  const [view,setView]=useState('home'),[current,setCurrent]=useState(0),[playing,setPlaying]=useState(false),[likes,setLikes]=useState([1,3]),[theme,setTheme]=useState('auto'),[query,setQuery]=useState(''),[mobileMenu,setMobileMenu]=useState(false),[progress,setProgress]=useState(34);
+ const durationSeconds = songDuration => {const parts=songDuration.split(':').map(Number);return parts.reduce((a,n)=>a*60+n,0)};
+ const formatClock = seconds => {const n=Math.max(0,Math.floor(seconds));const h=Math.floor(n/3600),m=Math.floor(n%3600/60),sec=n%60;return h?String(h)+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0'):String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')};
  const [systemDark,setSystemDark]=useState(()=>window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true);
  useEffect(()=>{const m=window.matchMedia('(prefers-color-scheme: dark)');const fn=e=>setSystemDark(e.matches);m.addEventListener('change',fn);return()=>m.removeEventListener('change',fn)},[]);
  const dark=theme==='auto'?systemDark:theme==='dark';
  useEffect(()=>{document.documentElement.dataset.theme=dark?'dark':'light'},[dark]);
- const song=songs[current],next=()=>{setCurrent(v=>(v+1)%songs.length);setProgress(0)},prev=()=>{setCurrent(v=>(v-1+songs.length)%songs.length);setProgress(0)};
+ const song=songs[current],totalSeconds=durationSeconds(song.duration),currentSeconds=Math.round(progress/100*totalSeconds);
+ useEffect(()=>{if(!playing)return;const timer=setInterval(()=>setProgress(v=>Math.min(100,v+100/Math.max(1,totalSeconds))),1000);return()=>clearInterval(timer)},[playing,totalSeconds]);
+ useEffect(()=>{if(progress>=100&&playing)setPlaying(false)},[progress,playing]);
+ const next=()=>{setCurrent(v=>(v+1)%songs.length);setProgress(0)},prev=()=>{setCurrent(v=>(v-1+songs.length)%songs.length);setProgress(0)};
  const choose=(idx)=>{setCurrent(idx);setPlaying(true);setProgress(0)};
  const toggleLike=id=>setLikes(v=>v.includes(id)?v.filter(x=>x!==id):[...v,id]);
  const nav=id=>{setView(id);setMobileMenu(false)};
@@ -48,9 +53,19 @@ function App(){
  {view==='car'&&<><div className="page-heading"><span className="eyebrow muted">PROJEKT EKRANU SAMOCHODOWEGO</span><h1>Car Preview</h1><p>Podgląd wizualny. Faktyczny ekran Android Auto jest kontrolowany przez system i wymaga osobnej integracji Media3.</p></div><div className="car-frame"><div className="car-header"><strong><Music2 size={21}/> shutter.</strong><span><Clock3 size={16}/> 09:41</span></div><div className="car-body"><div className="car-cover-wrap">{cover(song.art,'car-cover')}</div><div className="car-now"><span>TERAZ ODTWARZANE</span><h2>{song.title}</h2><p>{song.artist}</p><div className="car-controls"><button aria-label="Poprzedni" onClick={prev}><SkipBack fill="currentColor"/></button><button className="car-play" aria-label={playing?'Pauza':'Odtwórz'} onClick={()=>setPlaying(v=>!v)}>{playing?<Pause fill="currentColor"/>:<Play fill="currentColor"/>}</button><button aria-label="Następny" onClick={next}><SkipForward fill="currentColor"/></button></div></div><div className="car-queue"><strong>NASTĘPNE</strong>{songs.filter(s=>s.id!==song.id).slice(0,3).map(s=><div key={s.id}><span>{s.title}</span><small>{s.artist}</small></div>)}</div></div></div><div className="car-note">Wersja koncepcyjna — nie jest interfejsem zatwierdzonym ani renderowanym przez Android Auto.</div></>}
  </div>
  </main>
- <PlayerGlass><div className="player-bar"><div className="player-song">{cover(song.art,'player-cover')}<div className="player-song-meta"><strong>{song.title}</strong><span className="player-build-tag">UI 10</span><small>{song.artist}</small></div><button className={likes.includes(song.id)?'liked':''} aria-label="Ulubione" onClick={()=>toggleLike(song.id)}><Heart size={18} fill={likes.includes(song.id)?'currentColor':'none'}/></button></div>
- <div className="player-middle"><div className="player-controls"><button aria-label="Losowo — funkcja wkrótce" disabled><Shuffle size={17}/></button><button aria-label="Poprzedni" onClick={prev}><SkipBack size={20} fill="currentColor"/></button><button aria-label={playing?'Pauza':'Odtwórz'} className="play-button" onClick={()=>setPlaying(v=>!v)}>{playing?<Pause size={19} fill="currentColor"/>:<Play size={19} fill="currentColor"/>}</button><button aria-label="Następny" onClick={next}><SkipForward size={20} fill="currentColor"/></button><button aria-label="Powtarzanie — funkcja wkrótce" disabled><Repeat2 size={17}/></button></div><div className="progress-line"><span>1:24</span><input type="range" min="0" max="100" value={progress} onChange={e=>setProgress(Number(e.target.value))} aria-label="Pozycja podglądu utworu"/><span>{song.duration}</span></div></div>
- <div className="player-right"><Volume2 size={18}/><input type="range" aria-label="Głośność podglądu" defaultValue="65"/><span className="quality">SHUTTER • DEMO</span></div></div></PlayerGlass>
+ <PlayerGlass><div className="player-bar player-bar-v5">
+   <div className="player-song"><div className="player-song-meta"><strong>{song.title}</strong><small>{song.artist} · {song.album}</small></div></div>
+   <div className="player-middle">
+    <div className="progress-line"><span>{formatClock(currentSeconds)}</span><input type="range" min="0" max="100" step=".1" value={progress} onChange={e=>setProgress(Number(e.target.value))} aria-label="Pozycja demonstracyjnego utworu"/><span>{formatClock(totalSeconds)}</span></div>
+    <div className="player-controls">
+     <button aria-label="Poprzedni" onClick={prev}><SkipBack fill="currentColor"/></button>
+     <button aria-label={playing?'Pauza':'Odtwórz'} className="play-button" onClick={()=>{if(progress>=100)setProgress(0);setPlaying(v=>!v)}}>{playing?<Pause fill="currentColor"/>:<Play fill="currentColor"/>}</button>
+     <button aria-label="Następny" onClick={next}><SkipForward fill="currentColor"/></button>
+    </div>
+    <div className="playback-state"><span className={playing?'state-dot active':'state-dot'}/>{playing?'ODTWARZANIE · DEMO':progress>=100?'ZATRZYMANO · DEMO':'PAUZA · DEMO'}</div>
+   </div>
+   <div className="player-right"><Volume2 size={18}/><input type="range" aria-label="Głośność demonstracyjna" defaultValue="65"/><span className="quality">SHUTTER · DEMO</span></div>
+  </div></PlayerGlass>
  </div>
 }
 createRoot(document.getElementById('root')).render(<App/>);
