@@ -301,3 +301,27 @@ html,body,#root{max-width:100%;overflow-x:clip}
  .player-controls{gap:12px!important}
  .player-controls .play-button{width:70px!important;height:70px!important}
 }
+
+/* PLAYER FIX 08: restore the round violet primary action and round skip buttons */
+.player-controls button:not(:disabled):not(.play-button){
+ border-radius:50%!important;
+ aspect-ratio:1;
+ background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(108,97,164,.12))!important;
+ border:0!important;
+}
+.player-controls .play-button{
+ border-radius:50%!important;
+ background:linear-gradient(150deg,#b8a1ff 0%,#966efc 43%,#713fe4 100%)!important;
+ color:#fff!important;
+ border:0!important;
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.34),0 7px 19px rgba(105,69,227,.35)!important;
+}
+@media(max-width:800px){
+ .player-controls button:not(:disabled):not(.play-button){width:52px!important;height:52px!important;border-radius:50%!important}
+ .player-controls .play-button{width:80px!important;height:80px!important;border-radius:50%!important}
+}
+@media(max-width:510px){
+ .player-controls button:not(:disabled):not(.play-button){width:52px!important;height:52px!important;border-radius:50%!important}
+ .player-controls .play-button{width:76px!important;height:76px!important;border-radius:50%!important}
+}
+@media(max-width:350px){.player-controls .play-button{width:70px!important;height:70px!important}}
