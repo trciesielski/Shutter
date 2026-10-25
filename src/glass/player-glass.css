@@ -518,3 +518,15 @@
 .shutter-glass .progress-line input[type="range"]::-webkit-slider-thumb{width:15px;height:15px;margin-top:-5.5px}
 .shutter-glass .progress-line input[type="range"]::-moz-range-thumb{width:15px;height:15px}
 .shutter-glass .progress-line input[type="range"]:disabled{opacity:.45;cursor:default}
+
+/* Seek V2: 4px visual line, 26px invisible touch target. */
+.shutter-glass .progress-line input[type="range"]{
+ height:26px!important;
+ padding:0!important;
+ background-size:100% 4px!important;
+ background-position:center center!important;
+ background-repeat:no-repeat!important;
+ background-clip:border-box!important;
+ touch-action:none;
+}
+.shutter-glass .progress-line input[type="range"]::-webkit-slider-thumb{width:15px;height:15px}
