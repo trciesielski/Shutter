@@ -118,8 +118,15 @@ export function useAudioEngine(){
  const remove=async id=>{
   try{await removeTrack(id)}catch{setError('Nie można usunąć pliku.');return}
   const f=latest.current.files.find(x=>x.id===id);if(f?.url){URL.revokeObjectURL(f.url);urls.current=urls.current.filter(x=>x!==f.url)}
-  if(latest.current.files[latest.current.index]?.id===id)stop();
-  setFiles(a=>a.filter(f=>f.id!==id));setQueueIds(a=>a.filter(x=>x!==id));setIndex(0);
+  const removedIndex=latest.current.files.findIndex(x=>x.id===id);
+  if(latest.current.files[latest.current.index]?.id===id){
+   stop();decks.current.forEach(a=>{a.removeAttribute('src');a.load()});
+   activeTrackId.current=null;recorded.current=null;setDuration(0);
+   setIndex(0);
+  }else if(removedIndex>=0&&removedIndex<latest.current.index){
+   setIndex(i=>Math.max(0,i-1));
+  }
+  setFiles(a=>a.filter(f=>f.id!==id));setQueueIds(a=>a.filter(x=>x!==id));
  };
  const move=(from,to)=>setQueueIds(ids=>reordered(ids,from,to));
  const addNext=id=>setQueueIds(ids=>{const cleaned=ids.filter(x=>x!==id),p=cleaned.indexOf(latest.current.files[latest.current.index]?.id);cleaned.splice(Math.max(0,p+1),0,id);return cleaned});
