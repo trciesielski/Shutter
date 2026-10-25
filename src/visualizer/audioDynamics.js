@@ -14,7 +14,7 @@ export function updateVisualDynamics(state,features,dtMs){
  const sustain=[],transient=[],baseline=[];
  for(let i=0;i<8;i++){
   const x=features.bands[i]||0,was=previous.sustain[i]||0,base=previous.baseline[i]||0;
-  const follow=1-Math.exp(-seconds/(x>was?.06:.22));
+  const follow=1-Math.exp(-seconds/(x > was ? .06 : .22));
   sustain[i]=was+(x-was)*follow;
   baseline[i]=base+(x-base)*(1-Math.exp(-seconds/.75));
   const impulse=Math.max(0,x-base)*1.8;
