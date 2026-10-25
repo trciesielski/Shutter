@@ -103,7 +103,7 @@ test('PCM fallback derives frequency energy from actual nonzero signal and zero 
 
 test('eight-band dynamics tracks sustain, transients and silence independently',()=>{
  const quiet=spectralFeatures(Array(32).fill(0));
- assert.equal(quiet.bands.length,8);
+ assert.equal(quiet.bands.length,12);
  assert.equal(quiet.flux,0);
  const kick=Array(32).fill(0);kick[5]=90;kick[6]=85;
  const first=spectralFeatures(kick,quiet.raw);
@@ -118,4 +118,16 @@ test('eight-band dynamics tracks sustain, transients and silence independently',
  for(let i=0;i<35;i++)state=updateVisualDynamics(state,quiet,85);
  assert.ok(state.beat<.05);
  assert.ok(state.sustain[1]<.05);
+});
+
+test('vocal-range proxy responds to midrange spectral data, not pure sub bass',()=>{
+ const vocal=Array(32).fill(0);for(let i=15;i<24;i++)vocal[i]=75;
+ const bass=Array(32).fill(0);for(let i=0;i<6;i++)bass[i]=75;
+ const fv=spectralFeatures(vocal),fb=spectralFeatures(bass);
+ assert.ok(fv.voice>.4);
+ assert.ok(fv.voice>fb.voice);
+ const dynamics=updateVisualDynamics(null,fv,80);
+ assert.ok(dynamics.voiceSustain>0);
+ assert.ok(dynamics.voiceTransient>0);
+ assert.equal(spectralFeatures(Array(32).fill(0)).voice,0);
 });
