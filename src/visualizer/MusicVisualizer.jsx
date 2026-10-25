@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react';
-import {Maximize2,Minimize2} from 'lucide-react';
+import {Maximize2,Minimize2,Focus,PanelsTopLeft} from 'lucide-react';
 import {createPortal} from 'react-dom';
 import {VISUAL_MODES,resolveVisualMode} from './modes.js';
 import {spectrumEnergy} from '../audio/spectrumBands.js';
@@ -19,6 +19,7 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true,signa
  const [settings,setSettings]=useState(read),[reduced,setReduced]=useState(()=>window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false);
  const [coverUrl,setCoverUrl]=useState(null);
  const [maximized,setMaximized]=useState(false);
+ const [focus,setFocus]=useState(false);
  const [diagnostic,setDiagnostic]=useState(false);
  const [webglFailed,setWebglFailed]=useState(false);
  const [levels,setLevels]=useState({bass:0,mids:0,treble:0});
@@ -26,6 +27,7 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true,signa
  useEffect(()=>{const mq=window.matchMedia('(prefers-reduced-motion: reduce)');const update=()=>setReduced(mq.matches);mq.addEventListener?.('change',update);return()=>mq.removeEventListener?.('change',update)},[]);
  useEffect(()=>{if(!song?.coverBlob){setCoverUrl(null);return}const u=URL.createObjectURL(song.coverBlob);setCoverUrl(u);return()=>URL.revokeObjectURL(u)},[song?.coverBlob]);
  useEffect(()=>{document.documentElement.classList.toggle('visualizer-backdrop-active',maximized);const onKey=e=>{if(e.key==='Escape')setMaximized(false)};window.addEventListener('keydown',onKey);return()=>{document.documentElement.classList.remove('visualizer-backdrop-active');window.removeEventListener('keydown',onKey)}},[maximized]);
+ useEffect(()=>{document.documentElement.classList.toggle('shutter-visual-focus',focus);return()=>document.documentElement.classList.remove('shutter-visual-focus')},[focus]);
  const mode=resolveVisualMode(settings.mode,!!coverUrl,reduced);
  const neon=mode==='neon'&&!webglFailed;
  useEffect(()=>{if(!diagnostic)return;const timer=setInterval(()=>{const e=spectrumEnergy(playing?bins:Array(32).fill(0));setLevels({bass:Math.round(e.bass*100),mids:Math.round(e.mids*100),treble:Math.round(e.treble*100)})},150);return()=>clearInterval(timer)},[diagnostic,bins,playing]);
@@ -77,8 +79,9 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true,signa
    <label className="visualizer-mode"><select aria-label="Tryb wizualizacji" value={settings.mode} onChange={e=>setSettings(v=>({...v,mode:e.target.value}))}>{VISUAL_MODES.map(([id,label])=><option value={id} key={id}>{label}</option>)}</select></label>
    <div className="visualizer-head-actions">
     <label className="visualizer-intensity"><span>Intensywność</span><input aria-label="Intensywność wizualizacji" type="range" min="10" max="100" step="5" value={settings.intensity} onChange={e=>setSettings(v=>({...v,intensity:Number(e.target.value)}))}/></label>
+    <button className="visualizer-focus-toggle" aria-pressed={focus} title={focus?'Pokaż interfejs':'Tylko wizualizacja i odtwarzacz'} aria-label={focus?'Pokaż interfejs':'Tryb czystej wizualizacji'} onClick={()=>{setFocus(v=>!v);setMaximized(true)}}>{focus?<PanelsTopLeft size={18}/>:<Focus size={18}/>}</button>
     <button className="visualizer-diagnostic-toggle" aria-pressed={diagnostic} title="Sprawdź sygnał audio" aria-label="Diagnostyka reakcji na muzykę" onClick={()=>setDiagnostic(v=>!v)}>FFT</button>
-    <button className="visualizer-maximize" aria-pressed={maximized} aria-label={maximized?'Wyłącz animowane tło':'Włącz animowane tło całej aplikacji'} title={maximized?'Wyłącz animowane tło':'Animowane tło aplikacji'} onClick={()=>setMaximized(v=>!v)}>{maximized?<Minimize2 size={18}/>:<Maximize2 size={18}/>}</button>
+    <button className="visualizer-maximize" aria-pressed={maximized} aria-label={maximized?'Wyłącz animowane tło':'Włącz animowane tło całej aplikacji'} title={maximized?'Wyłącz animowane tło':'Animowane tło aplikacji'} onClick={()=>{setMaximized(v=>!v);if(maximized)setFocus(false)}}>{maximized?<Minimize2 size={18}/>:<Maximize2 size={18}/>}</button>
    </div>
   </div>
   {diagnostic&&<div className="visualizer-diagnostic" role="status" aria-label="Poziomy analizatora audio"><span>{playing?'ODTWARZANIE':'PAUZA'} · {signalStatus==='error'?'BŁĄD ANALIZATORA':signalStatus==='inactive'?'ANALIZATOR NIEAKTYWNY':levels.bass+levels.mids+levels.treble>2?'SYGNAŁ':'CISZA / BRAK FFT'}</span>{[['Bas',levels.bass],['Średnie',levels.mids],['Wysokie',levels.treble]].map(([name,n])=><label key={name}>{name}<meter min="0" max="100" value={n}/><strong>{n}%</strong></label>)}</div>}
