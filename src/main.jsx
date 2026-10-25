@@ -4,6 +4,7 @@ import { House, Library, ListMusic, Search, Settings, CarFront, Music2, Heart, P
 import './style.css';
 import GlassEngine from './glass/GlassEngine.jsx';
 import PlayerGlass from './glass/PlayerGlass.jsx';
+import {registerPWA} from './pwa.js';
 import {useAudioEngine} from './audio/useAudioEngine.js';
 
 const songs = [
@@ -80,3 +81,4 @@ function App(){
  </div>
 }
 createRoot(document.getElementById('root')).render(<App/>);
+registerPWA();
