@@ -21,7 +21,7 @@ export function useEqualizer(decks){
    const sources=elements.map(el=>context.createMediaElementSource(el));
    const deckGains=sources.map((source,i)=>{const gain=context.createGain();gain.gain.value=i===0?1:0;source.connect(gain);return gain});
    const preamp=context.createGain(),filters=FREQUENCIES.map((f,i)=>{const b=context.createBiquadFilter();b.type=i===0?'lowshelf':i===9?'highshelf':'peaking';b.frequency.value=f;b.Q.value=1.05;return b});
-   const analyser=context.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=.8;
+   const analyser=context.createAnalyser();analyser.fftSize=2048;analyser.smoothingTimeConstant=.65;
    deckGains.forEach(gain=>gain.connect(preamp));filters.reduce((prev,node)=>{prev.connect(node);return node},preamp).connect(analyser);analyser.connect(context.destination);
    graph.current={context,preamp,filters,analyser,deckGains};setReady(true);setSignalStatus('connected');
    return graph.current;
@@ -34,7 +34,7 @@ export function useEqualizer(decks){
   g.filters.forEach((f,i)=>f.gain.setTargetAtTime(on?settings.gains[i]:0,t,.015));
  },[settings,compare,autoProtect]);
  const activate=async()=>{const g=await initialize();if(g){if(g.context.state==='suspended')await g.context.resume();const t=g.context.currentTime;const boost=Math.max(0,...settings.gains);const effective=autoProtect?Math.min(settings.preamp,-boost):settings.preamp;const on=settings.enabled&&!compare;g.preamp.gain.setValueAtTime(on?Math.pow(10,effective/20):1,t);g.filters.forEach((f,i)=>f.gain.setValueAtTime(on?settings.gains[i]:0,t))}return !!g};
- useEffect(()=>{let frame=0;let last=0;const data=new Uint8Array(512);const render=time=>{const g=graph.current;if(g&&time-last>65){g.analyser.getByteFrequencyData(data);setBins(spectrumBands(data,g.context.sampleRate));last=time}frame=requestAnimationFrame(render)};frame=requestAnimationFrame(render);return()=>{cancelAnimationFrame(frame);const g=graph.current;if(g){g.context.close().catch(()=>{});graph.current=null}}},[]);
+ useEffect(()=>{let frame=0;let last=0;const data=new Uint8Array(1024);const render=time=>{const g=graph.current;if(g&&time-last>65){g.analyser.getByteFrequencyData(data);setBins(spectrumBands(data,g.context.sampleRate));setSignalStatus(g.context.state==='running'?'connected':g.context.state);last=time}frame=requestAnimationFrame(render)};frame=requestAnimationFrame(render);return()=>{cancelAnimationFrame(frame);const g=graph.current;if(g){g.context.close().catch(()=>{});graph.current=null}}},[]);
  const setDeck=(i)=>{const g=graph.current;if(!g)return;const t=g.context.currentTime;g.deckGains.forEach((node,j)=>{node.gain.cancelScheduledValues(t);node.gain.setValueAtTime(i===j?1:0,t)})};
  const mixDecks=(from,to,seconds)=>{
   const g=graph.current;if(!g)return false;
