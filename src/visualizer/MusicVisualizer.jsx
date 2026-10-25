@@ -12,7 +12,7 @@ function createStars(count){
  return Array.from({length:count},(_,i)=>{seed=(seed*1664525+1013904223)>>>0;const a=seed/4294967295;seed=(seed*1664525+1013904223)>>>0;return {x:a,y:seed/4294967295,r:1+(i%3)*.65,phase:i*2.39996}});
 }
 const stars=createStars(100);
-export default function MusicVisualizer({song,playing,bins=[]}){
+export default function MusicVisualizer({song,playing,bins=[],visible=true}){
  const canvas=useRef(null),frame=useRef(0),spectrum=useRef(Array(32).fill(0)),beat=useRef(0);
  const [settings,setSettings]=useState(read),[reduced,setReduced]=useState(()=>window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false);
  const [coverUrl,setCoverUrl]=useState(null);
@@ -66,7 +66,7 @@ export default function MusicVisualizer({song,playing,bins=[]}){
   {mode==='cover'&&<div className="visualizer-cover">{coverUrl?<img src={coverUrl} alt="Okładka aktualnego utworu"/>:<div className="visualizer-fallback" aria-hidden="true"><strong>♪</strong></div>}</div>}
   <div className="visualizer-vignette"/>
  </div>;
- return <section className={'music-visualizer mode-'+mode+(maximized?' is-maximized':'')} aria-label="Wizualizacja odtwarzanego utworu">
+ return <section className={'music-visualizer mode-'+mode+(maximized?' is-maximized':'')+(!visible?' is-away':'')} aria-label="Wizualizacja odtwarzanego utworu">
   <div className="visualizer-head">
    <label className="visualizer-mode"><select aria-label="Tryb wizualizacji" value={settings.mode} onChange={e=>setSettings(v=>({...v,mode:e.target.value}))}>{VISUAL_MODES.map(([id,label])=><option value={id} key={id}>{label}</option>)}</select></label>
    <div className="visualizer-head-actions">
