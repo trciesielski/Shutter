@@ -91,8 +91,11 @@ export function useAudioEngine(){
    activeTrackId.current=f.id;
    await target.play();
    if(cross){eq.mixDecks(currentDeck,targetDeck,info.transition);activeDeck.current=targetDeck;fadeTimer.current=setTimeout(()=>{old.pause();old.removeAttribute('src');old.load();busy.current=false},info.transition*1000+150)}else if(preloaded){activeDeck.current=targetDeck;old.removeAttribute('src');old.load()}
+   // The newly selected deck may have loaded metadata while still inactive.
+   setDuration(Number.isFinite(target.duration)?target.duration:0);
+   setSeconds(Number.isFinite(target.currentTime)?target.currentTime:0);
    upNext.current=-1;
-   if(recorded.current!==f.id){recorded.current=f.id;setHistory(recordListen(f))}setIndex(at);setSeconds(0);setDuration(0);setState('playing');
+   if(recorded.current!==f.id){recorded.current=f.id;setHistory(recordListen(f))}setIndex(at);setState('playing');
    if(!cross)busy.current=false;
   }catch(e){busy.current=false;if(cross){target.pause();eq.setDeck(currentDeck)}setState('paused');if(e.name!=='AbortError')setError('Nie można rozpocząć odtwarzania: '+e.message)}
  };
@@ -116,7 +119,7 @@ export function useAudioEngine(){
   try{await eq.activate();if(a.ended)a.currentTime=0;await a.play();setError('')}catch(e){setError('Nie można wznowić odtwarzania: '+e.message)}
  };
  const stop=()=>{clearTimeout(fadeTimer.current);busy.current=false;decks.current.forEach(a=>{a.pause();if(a.src)a.currentTime=0});setSeconds(0);setState('stopped')};
- const seek=p=>{const a=current();if(a&&Number.isFinite(a.duration)&&a.duration>0){a.currentTime=clamp(a.duration*p/100,0,a.duration);setSeconds(a.currentTime)}};
+ const seek=p=>{const a=current();if(!a)return;const length=Number.isFinite(a.duration)&&a.duration>0?a.duration:duration;if(!Number.isFinite(length)||length<=0)return;const time=clamp(length*clamp(Number(p),0,100)/100,0,length);try{a.currentTime=time;setSeconds(time);setDuration(length)}catch(e){setError('Nie można przewinąć tego pliku.')}};
  const setGain=v=>{const n=clamp(v,0,1);setVolume(n);decks.current.forEach(a=>a.volume=n)};
  const next=()=>{const at=neighbor(false);if(at>=0)select(at)};
  const prev=()=>{const a=current();if(a&&a.currentTime>3){a.currentTime=0;return}const info=latest.current,order=orderOf(info),pos=order.indexOf(info.index);if(pos>0)select(order[pos-1],false)};
