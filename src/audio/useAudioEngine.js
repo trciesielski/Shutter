@@ -13,7 +13,7 @@ function persisted(key,fallback){try{return JSON.parse(localStorage.getItem(key)
 
 export function useAudioEngine(){
  const decks=useRef([]),activeDeck=useRef(0),urls=useRef([]),latest=useRef({});
- const change=useRef(null),busy=useRef(false),fadeTimer=useRef(null),recorded=useRef(null),activeTrackId=useRef(null);
+ const change=useRef(null),busy=useRef(false),fadeTimer=useRef(null),recorded=useRef(null),activeTrackId=useRef(null),supportsDsp=useRef(false);
  const eq=useEqualizer(decks);
  const [files,setFiles]=useState([]),[index,setIndex]=useState(0),[state,setState]=useState('idle');
  const [seconds,setSeconds]=useState(0),[duration,setDuration]=useState(0),[volume,setVolume]=useState(.7),[error,setError]=useState('');
@@ -43,7 +43,7 @@ export function useAudioEngine(){
       const at=neighbor(true),upcoming=info.files[at],standby=decks.current[1-i];
       if(upcoming&&standby&&standby.src!==upcoming.url){standby.src=upcoming.url;standby.preload='auto';standby.load()}
     }
-    if(info.transition>0&&info.repeat!=='one'&&Number.isFinite(remaining)&&remaining>0&&remaining<=info.transition+.15&&!busy.current&&!a.paused){
+    if(info.transition>0&&supportsDsp.current&&info.repeat!=='one'&&Number.isFinite(remaining)&&remaining>0&&remaining<=info.transition+.15&&!busy.current&&!a.paused){
       const at=neighbor(true);if(at>=0&&at!==info.index)change.current?.(at,true);
     }
    });
@@ -70,17 +70,18 @@ export function useAudioEngine(){
   const info=latest.current,f=info.files[at];if(!f||!decks.current.length)return;
   if(busy.current)return;
   const currentDeck=activeDeck.current,old=decks.current[currentDeck];
-  const cross=Boolean(withFade&&info.transition>0&&!old.paused&&old.src&&at!==info.index);
+  let cross=Boolean(withFade&&info.transition>0&&!old.paused&&old.src&&at!==info.index);
   const standby=decks.current[1-currentDeck];
-  const preloaded=Boolean(!cross&&old.ended&&standby?.src===f.url);
-  const standbyReady=Boolean((cross||preloaded)&&standby?.src===f.url);
-  const targetDeck=cross||preloaded?1-currentDeck:currentDeck,target=decks.current[targetDeck];
+  let preloaded=Boolean(!cross&&old.ended&&standby?.src===f.url);
+  let standbyReady=Boolean((cross||preloaded)&&standby?.src===f.url);
+  let targetDeck=cross||preloaded?1-currentDeck:currentDeck,target=decks.current[targetDeck];
   if(cross)busy.current=true;
   setError('');
   try{
    const ok=await eq.activate();
-   if(!ok){setError('Przetwarzanie EQ jest niedostępne na tym urządzeniu. Spróbuj innej przeglądarki.');busy.current=false;return}
-   if(!cross){clearTimeout(fadeTimer.current);if(!preloaded)standby.pause();eq.setDeck(targetDeck);old.pause()}
+   supportsDsp.current=ok;
+   if(!ok){cross=false;preloaded=false;standbyReady=false;targetDeck=currentDeck;target=old;busy.current=false}
+   if(!cross){clearTimeout(fadeTimer.current);if(!preloaded)standby.pause();if(ok)eq.setDeck(targetDeck);old.pause()}
    if(!standbyReady){target.src=f.url;target.load()}target.volume=volume;
    if(cross){eq.setDeck(currentDeck)}
    // Playback starts from the user's interaction; both decks share the same EQ graph.
