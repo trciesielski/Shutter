@@ -24,6 +24,8 @@ function App(){
  const audio=useAudioEngine();
  const playlists=usePlaylists();
  const [source,setSource]=useState('demo');
+ const [playerExpanded,setPlayerExpanded]=useState(false);
+ const [playerListId,setPlayerListId]=useState(null);
  const [view,setView]=useState('home'),[current,setCurrent]=useState(0),[playing,setPlaying]=useState(false),[likes,setLikes]=useState([1,3]),[theme,setTheme]=useState('auto'),[query,setQuery]=useState(''),[mobileMenu,setMobileMenu]=useState(false),[progress,setProgress]=useState(34);
  const durationSeconds = songDuration => {const parts=songDuration.split(':').map(Number);return parts.reduce((a,n)=>a*60+n,0)};
  const formatClock = seconds => {const n=Math.max(0,Math.floor(seconds));const h=Math.floor(n/3600),m=Math.floor(n%3600/60),sec=n%60;return h?String(h)+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0'):String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')};
@@ -33,6 +35,9 @@ function App(){
  useEffect(()=>{document.documentElement.dataset.theme=dark?'dark':'light'},[dark]);
  const isLocal=source==='local'&&audio.files.length>0;
  const song=isLocal?audio.files[audio.index]:songs[current];
+ const matchingPlaylists=isLocal?playlists.lists.filter(list=>list.tracks.includes(song.id)):[];
+ const selectedPlayerList=matchingPlaylists.find(list=>list.id===playerListId)||matchingPlaylists[0]||null;
+ const playlistQueue=selectedPlayerList?selectedPlayerList.tracks.map(id=>audio.files.find(f=>f.id===id)).filter(Boolean):[];
  const totalSeconds=isLocal?audio.duration:durationSeconds(song.duration);
  const currentSeconds=isLocal?audio.seconds:Math.round(progress/100*totalSeconds);
  useEffect(()=>{if(isLocal||!playing)return;const timer=setInterval(()=>setProgress(v=>Math.min(100,v+100/Math.max(1,totalSeconds))),1000);return()=>clearInterval(timer)},[playing,totalSeconds,isLocal]);
@@ -71,8 +76,14 @@ function App(){
  {view==='car'&&<><div className="page-heading"><span className="eyebrow muted">PROJEKT EKRANU SAMOCHODOWEGO</span><h1>Car Preview</h1><p>Podgląd wizualny. Faktyczny ekran Android Auto jest kontrolowany przez system i wymaga osobnej integracji Media3.</p></div><div className="car-frame"><div className="car-header"><strong><Music2 size={21}/> shutter.</strong><span><Clock3 size={16}/> 09:41</span></div><div className="car-body"><div className="car-cover-wrap">{cover(song.art,'car-cover')}</div><div className="car-now"><span>TERAZ ODTWARZANE</span><h2>{song.title}</h2><p>{song.artist}</p><div className="car-controls"><button aria-label="Poprzedni" onClick={prev}><SkipBack fill="currentColor"/></button><button className="car-play" aria-label={playing?'Pauza':'Odtwórz'} onClick={()=>setPlaying(v=>!v)}>{playing?<span className="pause-audio-pulse" aria-hidden="true"><span/><span/></span>:<Play fill="currentColor"/>}</button><button aria-label="Następny" onClick={next}><SkipForward fill="currentColor"/></button></div></div><div className="car-queue"><strong>NASTĘPNE</strong>{songs.filter(s=>s.id!==song.id).slice(0,3).map(s=><div key={s.id}><span>{s.title}</span><small>{s.artist}</small></div>)}</div></div></div><div className="car-note">Wersja koncepcyjna — nie jest interfejsem zatwierdzonym ani renderowanym przez Android Auto.</div></>}
  </div>
  </main>
- <PlayerGlass><div className="player-bar player-bar-v5">
-   <div className="player-song"><div className="player-song-meta"><strong>{song.title}</strong><small>{song.artist} · {song.album}</small></div></div>
+ <PlayerGlass expanded={playerExpanded}>
+  {playerExpanded&&<section className="player-expanded-panel" aria-label="Zawartość playlisty">
+   <div className="player-expanded-heading"><div><span className="player-expanded-eyebrow">TERAZ ODTWARZANE</span><h2>{song.title}</h2><small>{song.artist} · {song.album}</small></div><button className="player-expanded-close" aria-label="Zwiń odtwarzacz" onClick={()=>setPlayerExpanded(false)}><X size={21}/></button></div>
+   {matchingPlaylists.length>0?<><div className="player-expanded-tabs">{matchingPlaylists.map(list=><button key={list.id} className={selectedPlayerList?.id===list.id?'active':''} onClick={()=>setPlayerListId(list.id)}>{list.name}</button>)}</div>
+   <div className="player-expanded-tracks">{playlistQueue.map(item=>{const idx=audio.files.findIndex(f=>f.id===item.id),selected=isLocal&&song.id===item.id;return <button key={item.id} className={selected?'active':''} onClick={()=>{if(selected)audio.toggle();else chooseLocal(idx)}}><span className="player-queue-art">{selected&&activePlaying?<Pause size={17} fill="currentColor"/>:<Play size={17} fill="currentColor"/>}</span><span className="player-queue-label"><strong>{item.title}</strong><small>{item.artist}</small></span>{selected&&<span className="player-current-marker">TERAZ</span>}</button>})}</div></>:<div className="player-expanded-empty">{isLocal?'Ten utwór nie należy jeszcze do żadnej playlisty. Dodaj go w Bibliotece przez menu trzech kropek.':'To utwór demonstracyjny. Wybierz własny plik przypisany do playlisty, aby zobaczyć jej zawartość.'}</div>}
+  </section>}
+  <div className="player-bar player-bar-v5">
+   <div className="player-song"><button className="player-song-expand" aria-label={playerExpanded?"Zwiń panel playlisty":"Rozwiń panel playlisty"} aria-expanded={playerExpanded} onClick={()=>setPlayerExpanded(v=>!v)}><div className="player-song-meta"><strong>{song.title}</strong><small>{song.artist} · {song.album}</small></div><ChevronRight className={playerExpanded?"expanded-chevron":""} size={17}/></button></div>
    <div className="player-middle">
     <div className="progress-line"><span>{formatClock(currentSeconds)}</span><input type="range" min="0" max="100" step=".1" value={isLocal?(totalSeconds>0?audio.seconds/totalSeconds*100:0):progress} onChange={e=>seekTo(Number(e.target.value))} aria-label="Pozycja utworu" style={{"--seek-progress":`${isLocal&&totalSeconds>0?audio.seconds/totalSeconds*100:progress}%`}}/><span>{formatClock(totalSeconds)}</span></div>
     <div className="player-controls">
