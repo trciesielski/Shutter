@@ -104,3 +104,8 @@ html.shutter-visual-focus .music-visualizer .visualizer-head-actions{gap:5px}
 .music-visualizer .visualizer-scene canvas.neon-pulse-canvas,
 .visualizer-scene-backdrop canvas.neon-pulse-canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .music-visualizer.mode-shards .visualizer-vignette{opacity:.22}
+
+/* Sonic Lines PRO — full viewport in either inline or focus mode. */
+.music-visualizer .visualizer-scene canvas.sonic-lines-canvas,
+.visualizer-scene-backdrop canvas.sonic-lines-canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.music-visualizer.mode-sonic .visualizer-vignette{opacity:.22}
