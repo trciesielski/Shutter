@@ -1,9 +1,10 @@
-import React,{useState} from 'react';
+import React,{useState,useEffect} from 'react';
 import {Heart,Music2,Plus,Play,Pause,ChevronLeft,Trash2,X} from 'lucide-react';
 export default function LocalPlaylists({tracks,onPlay,onToggle,activeId,isPlaying,playlists}){
  const [name,setName]=useState(''),[opened,setOpened]=useState(null);
  const {lists,create,toggleTrack,remove}=playlists;
  const selected=lists.find(l=>l.id===opened);
+ useEffect(()=>{if(!selected)return;const old=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=old}},[selected?.id]);
  const add=()=>{if(!name.trim())return;create(name);setName('')};
  return <section className={selected?"local-playlists playlist-open":"local-playlists"}>
   <div className="playlist-new"><input aria-label="Nazwa nowej playlisty" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')add()}} placeholder="Nazwa nowej playlisty"/><button onClick={add} disabled={!name.trim()}><Plus size={17}/> Utwórz</button></div>
