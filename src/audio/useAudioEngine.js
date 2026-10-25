@@ -72,14 +72,14 @@ export function useAudioEngine(){
   setError('');
   try{
    const ok=await eq.activate();
-   if(!ok){setError('Przetwarzanie audio Web Audio nie jest dostępne.');busy.current=false;return}
+   if(!ok){setError('Przetwarzanie EQ jest niedostępne na tym urządzeniu. Spróbuj innej przeglądarki.');busy.current=false;return}
    if(!cross){clearTimeout(fadeTimer.current);decks.current[1-currentDeck].pause();eq.setDeck(currentDeck);old.pause()}
    target.src=f.url;target.load();target.volume=volume;
    if(cross){eq.setDeck(currentDeck)}
    // Playback starts from the user's interaction; both decks share the same EQ graph.
    await target.play();
    if(cross){eq.mixDecks(currentDeck,targetDeck,info.transition);activeDeck.current=targetDeck;fadeTimer.current=setTimeout(()=>{old.pause();old.removeAttribute('src');old.load();busy.current=false},info.transition*1000+150)}
-   recorded.current=null;setIndex(at);setSeconds(0);setDuration(0);setState('playing');
+   recorded.current=f.id;setHistory(recordListen(f));setIndex(at);setSeconds(0);setDuration(0);setState('playing');
    if(!cross)busy.current=false;
   }catch(e){busy.current=false;if(cross){target.pause();eq.setDeck(currentDeck)}setState('paused');if(e.name!=='AbortError')setError('Nie można rozpocząć odtwarzania: '+e.message)}
  };
