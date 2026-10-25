@@ -50,3 +50,10 @@ html.visualizer-backdrop-active .shutter-glass{z-index:30}
 html.visualizer-backdrop-active .music-visualizer .visualizer-mode select,
 html.visualizer-backdrop-active .music-visualizer .visualizer-maximize{backdrop-filter:blur(16px);background:color-mix(in srgb,var(--surface) 75%,transparent)!important}
 @media(max-width:580px){.music-visualizer.is-maximized{min-height:0!important;margin-bottom:12px!important}.visualizer-scene-backdrop .visualizer-cover{width:min(55vw,34vh,220px)!important}}
+
+/* Background survives navigation; keep controls reachable to switch it off. */
+.music-visualizer.is-away{min-height:0!important;height:0!important;margin:0!important;padding:0!important}
+.music-visualizer.is-away:not(.is-maximized) .visualizer-head,.music-visualizer.is-away:not(.is-maximized) .visualizer-scene{display:none!important}
+.music-visualizer.is-away.is-maximized .visualizer-head{position:fixed!important;top:calc(env(safe-area-inset-top,0px) + 72px)!important;right:18px!important;left:auto!important;z-index:45!important;padding:0!important}
+.music-visualizer.is-away.is-maximized .visualizer-mode,.music-visualizer.is-away.is-maximized .visualizer-intensity{display:none!important}
+.music-visualizer.is-away.is-maximized .visualizer-maximize{width:36px;height:36px}
