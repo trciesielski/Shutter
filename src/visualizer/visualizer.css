@@ -94,3 +94,8 @@ html.shutter-visual-focus .music-visualizer .visualizer-head-actions{gap:5px}
 @media(max-width:580px){html.shutter-visual-focus .music-visualizer .visualizer-head{padding:4px 2px 0!important}.visualizer-focus-toggle{width:35px;height:35px}}
 
 .visualizer-signal-detail{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;line-height:1.5}
+
+/* Glass Shards PRO — transparent scene surface, inline and focus modes. */
+.music-visualizer .visualizer-scene canvas.glass-shards-canvas,
+.visualizer-scene-backdrop canvas.glass-shards-canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.music-visualizer.mode-shards .visualizer-vignette{opacity:.30}
