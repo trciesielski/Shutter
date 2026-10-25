@@ -5,6 +5,7 @@ import {VISUAL_MODES,resolveVisualMode} from './modes.js';
 import {spectrumEnergy} from '../audio/spectrumBands.js';
 import NeonSpectrum from './NeonSpectrum.jsx';
 import NeonPulse360 from './NeonPulse360.jsx';
+import NeonWavesPRO from './NeonWavesPRO.jsx';
 import SonicLines from './SonicLines.jsx';
 import './visualizer.css';
 
