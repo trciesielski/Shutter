@@ -1,0 +1,36 @@
+import {useEffect,useRef,useState} from 'react';
+export const FREQUENCIES=[31,62,125,250,500,1000,2000,4000,8000,16000];
+export const PRESETS={Flat:[0,0,0,0,0,0,0,0,0,0],Bass:[6,5,4,2,0,0,-1,-1,0,0],Rock:[4,3,1,-1,-2,0,2,3,3,2],Vocal:[-2,-2,-1,0,2,4,4,2,0,-1],Electronic:[5,4,2,0,-1,1,3,4,3,2],Cinematic:[4,3,2,0,1,2,3,2,1,1]};
+const KEY='shutter-eq-v1';
+const clamp=(v,min,max)=>Math.max(min,Math.min(max,Number(v)||0));
+function stored(){try{const a=JSON.parse(localStorage.getItem(KEY)||'{}');return {enabled:a.enabled??true,gains:Array.isArray(a.gains)&&a.gains.length===10?a.gains.map(v=>clamp(v,-12,12)):[...PRESETS.Flat],preamp:clamp(a.preamp??-3,-12,6),preset:a.preset||'Flat',custom:a.custom&&typeof a.custom==='object'?a.custom:{}}}catch{return {enabled:true,gains:[...PRESETS.Flat],preamp:-3,preset:'Flat',custom:{}}}}
+export function useEqualizer(media){
+ const [settings,setSettings]=useState(stored),[ready,setReady]=useState(false);
+ const graph=useRef(null),[bins,setBins]=useState(Array(32).fill(0));
+ useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(settings))}catch{}},[settings]);
+ const initialize=async()=>{
+  if(graph.current)return graph.current;
+  const element=media.current;
+  const Constructor=window.AudioContext||window.webkitAudioContext;
+  if(!element||!Constructor)return null;
+  try{
+   const context=new Constructor(),source=context.createMediaElementSource(element);
+   const preamp=context.createGain(),filters=FREQUENCIES.map((f,i)=>{const b=context.createBiquadFilter();b.type=i===0?'lowshelf':i===9?'highshelf':'peaking';b.frequency.value=f;b.Q.value=1.05;return b});
+   const analyser=context.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=.8;
+   source.connect(preamp);filters.reduce((prev,node)=>{prev.connect(node);return node},preamp).connect(analyser);analyser.connect(context.destination);
+   graph.current={context,preamp,filters,analyser};setReady(true);
+   return graph.current;
+  }catch(e){console.warn('Equalizer unavailable:',e);return null}
+ };
+ useEffect(()=>{const g=graph.current;if(!g)return;const t=g.context.currentTime;
+  g.preamp.gain.setTargetAtTime(settings.enabled?Math.pow(10,settings.preamp/20):1,t,.015);
+  g.filters.forEach((f,i)=>f.gain.setTargetAtTime(settings.enabled?settings.gains[i]:0,t,.015));
+ },[settings]);
+ const activate=async()=>{const g=await initialize();if(g){if(g.context.state==='suspended')await g.context.resume();const t=g.context.currentTime;g.preamp.gain.setValueAtTime(settings.enabled?Math.pow(10,settings.preamp/20):1,t);g.filters.forEach((f,i)=>f.gain.setValueAtTime(settings.enabled?settings.gains[i]:0,t))}return !!g};
+ useEffect(()=>{let frame=0;let last=0;const data=new Uint8Array(512);const render=time=>{const g=graph.current;if(g&&time-last>65){g.analyser.getByteFrequencyData(data);setBins(Array.from({length:32},(_,i)=>Math.round(data[Math.min(511,Math.floor(i*i*.46))]/255*100)));last=time}frame=requestAnimationFrame(render)};frame=requestAnimationFrame(render);return()=>{cancelAnimationFrame(frame);const g=graph.current;if(g){g.context.close().catch(()=>{});graph.current=null}}},[]);
+ const setBand=(i,value)=>setSettings(s=>({...s,gains:s.gains.map((v,j)=>i===j?clamp(value,-12,12):v),preset:'Custom'}));
+ const setPreamp=value=>setSettings(s=>({...s,preamp:clamp(value,-12,6)}));
+ const applyPreset=name=>setSettings(s=>({...s,gains:[...(s.custom[name]||PRESETS[name]||PRESETS.Flat)],preset:name}));
+ const savePreset=name=>{const clean=name.trim().slice(0,32);if(clean)setSettings(s=>({...s,custom:{...s.custom,[clean]:[...s.gains]},preset:clean}))};
+ return {settings,bins,ready,activate,setBand,setPreamp,applyPreset,savePreset,toggle:()=>setSettings(s=>({...s,enabled:!s.enabled}))};
+}
