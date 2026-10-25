@@ -6,7 +6,7 @@ import './player-glass.css';
  * SVG displacement in backdrop-filter only where compositors support it.
  * Does not claim full native Apple refractive rendering.
  */
-export default function PlayerGlass({children,mode='balanced',expanded=false}){
+export default function PlayerGlass({children,mode='balanced',expanded=false,look}){
  const root=useRef(null);
  const [active,setActive]=useState(false);
  const [reduced,setReduced]=useState(false);
@@ -25,6 +25,7 @@ export default function PlayerGlass({children,mode='balanced',expanded=false}){
   root.current.style.setProperty('--touch-y',y+'%');
  };
  return <div className={'shutter-glass '+(active?'is-pressed ':'')+(reduced?'reduce-motion ':'')+'glass-'+mode+(expanded?' is-expanded':'')}
+  style={look?{'--glass-opacity':look.opacity/100,'--glass-blur':look.blur+'px','--glass-glow':look.glow/100}:undefined}
   ref={root} onPointerMove={move} onPointerDown={e=>{setActive(true);move(e)}} onPointerUp={()=>setActive(false)} onPointerCancel={()=>setActive(false)} onPointerLeave={()=>setActive(false)}>
    {children}
  </div>;
