@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {equalPowerCurves} from './crossfadeMath.js';
+import {spectrumBands} from './spectrumBands.js';
 export const FREQUENCIES=[31,62,125,250,500,1000,2000,4000,8000,16000];
 export const PRESETS={Flat:[0,0,0,0,0,0,0,0,0,0],Bass:[6,5,4,2,0,0,-1,-1,0,0],Rock:[4,3,1,-1,-2,0,2,3,3,2],Vocal:[-2,-2,-1,0,2,4,4,2,0,-1],Electronic:[5,4,2,0,-1,1,3,4,3,2],Cinematic:[4,3,2,0,1,2,3,2,1,1]};
 const KEY='shutter-eq-v1';
@@ -33,7 +34,7 @@ export function useEqualizer(decks){
   g.filters.forEach((f,i)=>f.gain.setTargetAtTime(on?settings.gains[i]:0,t,.015));
  },[settings,compare,autoProtect]);
  const activate=async()=>{const g=await initialize();if(g){if(g.context.state==='suspended')await g.context.resume();const t=g.context.currentTime;const boost=Math.max(0,...settings.gains);const effective=autoProtect?Math.min(settings.preamp,-boost):settings.preamp;const on=settings.enabled&&!compare;g.preamp.gain.setValueAtTime(on?Math.pow(10,effective/20):1,t);g.filters.forEach((f,i)=>f.gain.setValueAtTime(on?settings.gains[i]:0,t))}return !!g};
- useEffect(()=>{let frame=0;let last=0;const data=new Uint8Array(512);const render=time=>{const g=graph.current;if(g&&time-last>65){g.analyser.getByteFrequencyData(data);setBins(Array.from({length:32},(_,i)=>Math.round(data[Math.min(511,Math.floor(i*i*.46))]/255*100)));last=time}frame=requestAnimationFrame(render)};frame=requestAnimationFrame(render);return()=>{cancelAnimationFrame(frame);const g=graph.current;if(g){g.context.close().catch(()=>{});graph.current=null}}},[]);
+ useEffect(()=>{let frame=0;let last=0;const data=new Uint8Array(512);const render=time=>{const g=graph.current;if(g&&time-last>65){g.analyser.getByteFrequencyData(data);setBins(spectrumBands(data,g.context.sampleRate));last=time}frame=requestAnimationFrame(render)};frame=requestAnimationFrame(render);return()=>{cancelAnimationFrame(frame);const g=graph.current;if(g){g.context.close().catch(()=>{});graph.current=null}}},[]);
  const setDeck=(i)=>{const g=graph.current;if(!g)return;const t=g.context.currentTime;g.deckGains.forEach((node,j)=>{node.gain.cancelScheduledValues(t);node.gain.setValueAtTime(i===j?1:0,t)})};
  const mixDecks=(from,to,seconds)=>{
   const g=graph.current;if(!g)return false;
