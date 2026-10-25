@@ -26,7 +26,7 @@ export default function SonicLines({bins=[],playing=false,intensity=65,reduced=f
    const voice=dynamics.voiceSustain,attack=dynamics.voiceTransient,beat=dynamics.beat;
    const time=reduced?0:t*.001;
    const cy=h*.49,unit=Math.min(w,h),wide=h>w;
-   const amplitude=unit*(.045+bass*.14+mid*.06)*(.5+.5*power);
+   const amplitude=unit*(.038+bass*.15+mid*.07+beat*.065)*(.5+.5*power);
    // Dark navy background, wide soft atmosphere, preserved negative space.
    const bg=ctx.createRadialGradient(w*.5,cy,unit*.015,w*.5,cy,unit*.72);
    bg.addColorStop(0,'rgba(25,38,85,'+(.17+.2*features.energy)*power+')');
@@ -46,7 +46,7 @@ export default function SonicLines({bins=[],playing=false,intensity=65,reduced=f
     const band=Math.floor(i/count*12),level=s[band],transient=tr[band];
     const x=(i+.5)*w/count;
     const envelope=Math.sin(Math.PI*i/count)**.62;
-    const height=unit*(.012+e*.23+level*.075+transient*.07)*envelope*power;
+    const height=unit*(.008+e*.25+level*.082+transient*.10+beat*.016)*envelope*power;
     const hue=colors[Math.min(5,Math.floor(i/count*6))];
     ctx.strokeStyle=hue;ctx.globalAlpha=.25+.58*clamp(e+level*.6+transient*.5,0,1);
     ctx.lineWidth=barWidth;ctx.shadowColor=hue;ctx.shadowBlur=7+10*transient;
@@ -58,7 +58,7 @@ export default function SonicLines({bins=[],playing=false,intensity=65,reduced=f
     const family=i%4,shift=(i-7.5)*unit*.006;
     const hue=colors[(i+Math.floor(i/4))%colors.length],band=(i*5)%12;
     const sustain=s[band],transient=tr[band];
-    const amp=amplitude*(.50+.045*i+.32*sustain+.26*voice);
+    const amp=amplitude*(.50+.045*i+.37*sustain+.36*voice+.45*transient);
     ctx.beginPath();
     for(let x=0;x<=w+3;x+=3){
      const nx=x/w;
@@ -66,11 +66,11 @@ export default function SonicLines({bins=[],playing=false,intensity=65,reduced=f
      const angle=nx*Math.PI*(family===0?3.3:family===1?4.3:family===2?5.3:6.3);
      const phase=(i*.27)+time*(.42+.065*family)*(playing?1:0);
      const wave=Math.sin(angle-phase)*.66+Math.sin(angle*.58+phase*.45+i*.38)*.34;
-     const modulator=(.40+.65*focus)*(1+.33*mid+.22*attack);
+     const modulator=(.40+.65*focus)*(1+.33*mid+.35*attack+.24*beat);
      const y=cy+shift+wave*amp*modulator+Math.sin(nx*21+phase)*unit*.007*voice;
      if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
     }
-    const alpha=clamp((.19+.30*sustain+.22*voice+.38*transient)*(.6+.4*power),.1,.88);
+    const alpha=clamp((.24+.31*sustain+.24*voice+.42*transient)*(.6+.4*power),.1,.93);
     ctx.globalAlpha=alpha;
     ctx.strokeStyle=hue;ctx.lineWidth=i%5===0?1.6:1.0;
     ctx.shadowBlur=12+12*transient;ctx.shadowColor=hue;ctx.stroke();
