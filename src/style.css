@@ -331,3 +331,6 @@ html,body,#root{max-width:100%;overflow-x:clip}
   width:72px!important;height:72px!important;min-width:72px!important;min-height:72px!important;flex-basis:72px!important
  }
 }
+
+.player-build-tag{display:inline-block;margin-top:3px;font-size:9px;font-weight:800;letter-spacing:1px;color:var(--accent)}
+@media(max-width:510px){.player-build-tag{font-size:9px;margin-top:2px}}
