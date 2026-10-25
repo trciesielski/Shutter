@@ -139,3 +139,5 @@ test('Sonic Lines PRO remains independently selectable',()=>{assert.ok(VISUAL_MO
 test('Neon Waves PRO is a separate visualizer mode',()=>{assert.ok(VISUAL_MODES.some(([id])=>id==='waves'));assert.equal(resolveVisualMode('waves',false,false),'waves')});
 
 test('Sonic Waves PRO is a supported visualizer mode',()=>{assert.ok(VISUAL_MODES.some(([id])=>id==='waves'));assert.equal(resolveVisualMode('waves',false,false),'waves')});
+
+test('all visualizer mode ids are unique and neon line modes remain selectable',()=>{const ids=VISUAL_MODES.map(([id])=>id);assert.equal(new Set(ids).size,ids.length);assert.ok(ids.includes('sonic'));assert.ok(ids.includes('neon-waves'));assert.equal(resolveVisualMode('sonic',false,false),'sonic')});
