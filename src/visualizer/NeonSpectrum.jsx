@@ -43,7 +43,7 @@ void main(){
  float corona=exp(-pow((radius-inner)/.045,2.));
  c+=mix(magenta,cyan,.5+.5*sin(a*1.8))*corona*(.045+.36*beat+.12*mid)*power;
  float ring=line(radius-inner,.0025)+line(radius-inner,.013)*.30;
- c+=mix(magenta,cyan,smoothstep(-1.,1.,sin(a*2.+.5)))*ring*(.5+1.8*bass)*power;
+ c+=mix(magenta,cyan,smoothstep(-1.,1.,sin(a*2.+.5)))*ring*(.14+bass*.6+beat*2.2)*power;
  // Multi-layer segmented concentric rings, luminous but not constant bands.
  for(int i=0;i<5;i++){
   float f=float(i);
@@ -55,7 +55,7 @@ void main(){
   float gate=smoothstep(.08,.20,sectors)*(1.-smoothstep(.80,.94,sectors));
   float segment=line(radius-rr,.0026+energy*.006)*gate;
   vec3 hue=mix(magenta,cyan,.5+.5*sin(a*2.1+f*1.8));
-  c+=hue*segment*(.16+energy*2.5+beat*.38)*power;
+  c+=hue*segment*(.045+energy*1.65+beat*1.55)*power;
   c+=hue*line(radius-rr,.017)*gate*(.045+energy*.48)*power;
   c+=hue*line(radius-rr,.037)*gate*(.009+energy*.14)*power;
  }
@@ -69,7 +69,7 @@ void main(){
  float extent=smoothstep(start-.008,start+.005,radius)*(1.-smoothstep(start+height-.006,start+height+.006,radius));
  float ray=1.-smoothstep(.10,.44,local);
  vec3 hue=mix(cyan,magenta,.5+.5*sin(a*1.5+.8));
- c+=hue*ray*extent*(.16+e*2.4)*power;
+ c+=hue*ray*extent*(.035+e*1.5+beat*.95)*power;
  c+=hue*ray*line(radius-start-height,.007)*(e*.85)*power;
  c+=hue*ray*extent*(.025+e*.32)*line(radius-start-height*.5,.055)*power;
  // Accent arclets made of thin sharp highlights with a restrained bloom skirt.
@@ -81,7 +81,7 @@ void main(){
   float mask=smoothstep(.64,.91,arc);
   float glow=line(radius-rr,.0035)*mask;
   float halo=line(radius-rr,.014)*mask*.23;
-  c+=mix(magenta,cyan,mod(f,3.)/2.)*(glow+halo)*(.17+mid+beat*.75)*power;
+  c+=mix(magenta,cyan,mod(f,3.)/2.)*(glow+halo)*(.06+mid*.65+beat*1.8)*power;
  }
  // Spectral filaments: thin layered silk driven by midrange, voice and high transients.
  for(int j=0;j<9;j++){
@@ -163,7 +163,7 @@ export default function NeonSpectrum({bins=[],playing=false,intensity=65,onUnava
    const hit=inp.playing&&changed&&rise>Math.max(.055,metrics.previous*.16)&&t-metrics.lastHit>145;
    if(hit){metrics.beat=Math.min(1, .58+rise*2.6);metrics.lastHit=t}
    else metrics.beat*=Math.exp(-dt/185);
-   metrics.previous+=(rawBass-metrics.previous)*(rawBass>metrics.previous?.055:.02);
+   metrics.previous+=(rawBass-metrics.previous)*(rawBass>metrics.previous ? .055 : .02);
    const rate=1-Math.exp(-dt/45);
    for(let i=0;i<32;i++){const raw=rawBins[i];smooth[i]+=(raw-smooth[i])*(raw>smooth[i]?rate:rate*.6)}
    const avg=(a,b)=>{let sum=0;for(let i=a;i<b;i++)sum+=smooth[i];return sum/(b-a)};
