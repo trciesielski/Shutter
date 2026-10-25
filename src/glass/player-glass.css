@@ -181,3 +181,35 @@
   animation:none!important;opacity:.70!important;transform:none!important
  }
 }
+
+/* PLAYER V8 — twin glass pause bars, deliberately simulated until audio exists. */
+.shutter-glass .pause-audio-pulse{
+ display:flex;align-items:center;justify-content:center;gap:7px;
+ height:34px;width:35px;pointer-events:none;position:relative;z-index:2;
+}
+.shutter-glass .pause-audio-pulse span{
+ display:block;width:8px;height:24px;border-radius:3px;
+ background:linear-gradient(90deg,rgba(255,255,255,.78),#fff 48%,rgba(225,212,255,.88));
+ box-shadow:inset 1px 0 rgba(255,255,255,.45),0 1px 4px rgba(60,26,128,.20);
+ transform-origin:center;
+ will-change:transform;
+}
+.shutter-glass .play-button.is-playing .pause-audio-pulse span:first-child{
+ animation:shutter-audio-pulse-left 1.12s ease-in-out infinite;
+}
+.shutter-glass .play-button.is-playing .pause-audio-pulse span:last-child{
+ animation:shutter-audio-pulse-right .93s ease-in-out infinite;
+}
+@keyframes shutter-audio-pulse-left{
+ 0%,100%{transform:scaleY(.77)}
+ 35%{transform:scaleY(1.10)}
+ 65%{transform:scaleY(.88)}
+}
+@keyframes shutter-audio-pulse-right{
+ 0%,100%{transform:scaleY(1.05)}
+ 40%{transform:scaleY(.70)}
+ 72%{transform:scaleY(1.13)}
+}
+@media(prefers-reduced-motion:reduce){
+ .shutter-glass .play-button.is-playing .pause-audio-pulse span{animation:none!important;transform:none!important;will-change:auto}
+}
