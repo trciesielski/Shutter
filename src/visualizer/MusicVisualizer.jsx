@@ -4,7 +4,7 @@ import {createPortal} from 'react-dom';
 import {VISUAL_MODES,resolveVisualMode} from './modes.js';
 import {spectrumEnergy} from '../audio/spectrumBands.js';
 import NeonSpectrum from './NeonSpectrum.jsx';
-import GlassShards from './GlassShards.jsx';
+import NeonPulse360 from './NeonPulse360.jsx';
 import './visualizer.css';
 
 const KEY='shutter-visualizer-v1';
@@ -23,6 +23,7 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true,signa
  const [focus,setFocus]=useState(false);
  const [diagnostic,setDiagnostic]=useState(false);
  const [webglFailed,setWebglFailed]=useState(false);
+ useEffect(()=>setWebglFailed(false),[settings.mode]);
  const [levels,setLevels]=useState({bass:0,mids:0,treble:0});
  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(settings))}catch{}},[settings]);
  useEffect(()=>{const mq=window.matchMedia('(prefers-reduced-motion: reduce)');const update=()=>setReduced(mq.matches);mq.addEventListener?.('change',update);return()=>mq.removeEventListener?.('change',update)},[]);
@@ -71,7 +72,7 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true,signa
   return()=>{live=false;cancelAnimationFrame(frame.current)};
  },[mode,playing,reduced,maximized,diagnostic]);
  const scene=<div className={'visualizer-scene'+(maximized?' visualizer-scene-backdrop':'')}>
-  {mode==='shards'?<GlassShards bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized}/>:neon?<NeonSpectrum bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>:<canvas ref={canvas} aria-hidden="true"/>}
+  {mode==='shards'&&!webglFailed?<NeonPulse360 bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>:neon?<NeonSpectrum bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>:<canvas ref={canvas} aria-hidden="true"/>}
   {mode==='cover'&&<div className="visualizer-cover">{coverUrl?<img src={coverUrl} alt="Okładka aktualnego utworu"/>:<div className="visualizer-fallback" aria-hidden="true"><strong>♪</strong></div>}</div>}
   <div className="visualizer-vignette"/>
  </div>;
