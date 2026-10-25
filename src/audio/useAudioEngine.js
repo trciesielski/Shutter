@@ -1,78 +1,132 @@
 import {useEffect,useRef,useState} from 'react';
 import {readTracks,storeTrack,removeTrack} from './libraryStore.js';
-import {useEqualizer} from './useEqualizer.js';
 import {extractMetadata} from './musicMetadata.js';
 import {nextIndex,previousIndex,reordered} from './queueLogic.js';
-import {readHistory,recordListen,clearHistory,historyStats} from './listeningHistory.js';
-const allowed=/\.(mp3|wav|ogg|m4a|aac|flac|opus)$/i;
+import {recordListen,readHistory,historyStats,clearHistory} from './listeningHistory.js';
+import {useEqualizer} from './useEqualizer.js';
+
+const AUDIO_EXT=/\.(mp3|wav|ogg|m4a|aac|flac|opus)$/i;
+const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+const positionKey='shutter-last-position-v1';
+const fadeKey='shutter-crossfade-v1';
+function persisted(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}}
+
 export function useAudioEngine(){
- const media=useRef(null),urls=useRef([]),latest=useRef({files:[],index:0}),[files,setFiles]=useState([]),[index,setIndex]=useState(0);
- const eq=useEqualizer(media);
- const [shuffle,setShuffle]=useState(false),[repeat,setRepeat]=useState('off'),[history,setHistory]=useState(readHistory);
- const [queueIds,setQueueIds]=useState([]),[playedIndexes,setPlayedIndexes]=useState([]);
- const [transition,setTransition]=useState(0);
- const transitionRef=useRef(0);
- latest.current={files,index,shuffle,repeat,queueIds};
- const [state,setState]=useState('idle'),[seconds,setSeconds]=useState(0),[duration,setDuration]=useState(0),[volume,setVolume]=useState(.7),[error,setError]=useState('');
- useEffect(()=>{const a=new Audio();media.current=a;a.preload='metadata';a.volume=.7;
- const onTime=()=>setSeconds(a.currentTime||0),onDuration=()=>setDuration(Number.isFinite(a.duration)?a.duration:0);
- const onPlay=()=>setState('playing'),onPause=()=>setState(a.ended?'stopped':'paused');
- const onWait=()=>setState('loading'),onError=()=>{setError('Nie można odtworzyć pliku w tej przeglądarce.');setState('error')};
- const onEnded=()=>{const info=latest.current;const order=info.queueIds.length?info.queueIds.map(id=>info.files.findIndex(f=>f.id===id)).filter(i=>i>=0):info.files.map((_,i)=>i);const pos=order.indexOf(info.index);const next=nextIndex({length:order.length,index:pos<0?0:pos,shuffle:info.shuffle,repeat:info.repeat},true);if(next>=0&&order[next]>=0){const f=info.files[order[next]];a.src=f.url;a.load();setIndex(order[next]);setSeconds(0);setDuration(0);setState('loading');a.play().catch(()=>setState('paused'))}else{setState('stopped');setSeconds(a.duration||0)}};
- a.addEventListener('timeupdate',onTime);a.addEventListener('loadedmetadata',onDuration);a.addEventListener('durationchange',onDuration);a.addEventListener('playing',onPlay);a.addEventListener('pause',onPause);a.addEventListener('waiting',onWait);a.addEventListener('error',onError);a.addEventListener('ended',onEnded);
- return()=>{a.pause();a.removeAttribute('src');a.load();urls.current.forEach(URL.revokeObjectURL)};
- },[]);
- useEffect(()=>{let canceled=false;readTracks().then(records=>{if(canceled)return;const restored=records.map(({blob,...data})=>({...data,url:URL.createObjectURL(blob)}));urls.current.push(...restored.map(t=>t.url));setFiles(restored);setQueueIds(restored.map(t=>t.id))}).catch(()=>setError('Nie można wczytać zapisanej biblioteki na tym urządzeniu.'));return()=>{canceled=true}},[]);
- const importFiles=async list=>{
-  const incoming=Array.from(list||[]).filter(f=>allowed.test(f.name)||f.type.startsWith('audio/')).filter(f=>!files.some(existing=>existing.filename===f.name&&existing.size===f.size&&existing.modified===f.lastModified));
-  if(!incoming.length){setError('Wybierz pliki audio MP3, WAV, OGG, M4A lub FLAC.');return}
-  const meta=await Promise.all(incoming.map(extractMetadata));
-  const songs=incoming.map((f,i)=>({id:'local-'+Date.now()+'-'+i,title:meta[i].title,artist:meta[i].artist,album:meta[i].album,coverBlob:meta[i].coverBlob,duration:'--:--',art:['night','violet','blue','ocean'][i%4],url:URL.createObjectURL(f),filename:f.name,size:f.size,modified:f.lastModified}));
-  urls.current.push(...songs.map(x=>x.url));setFiles(old=>old.concat(songs));setQueueIds(old=>old.concat(songs.map(x=>x.id)));setError('');
-  const results=await Promise.allSettled(songs.map((track,i)=>{const {url,...metadata}=track;return storeTrack({...metadata,blob:incoming[i]})}));
-  if(results.some(result=>result.status==='rejected'))setError('Pliki dodano na tę sesję, ale zapis trwały nie powiódł się (możliwy brak miejsca).');
+ const decks=useRef([]),activeDeck=useRef(0),urls=useRef([]),latest=useRef({});
+ const change=useRef(null),busy=useRef(false),fadeTimer=useRef(null),recorded=useRef(null);
+ const eq=useEqualizer(decks);
+ const [files,setFiles]=useState([]),[index,setIndex]=useState(0),[state,setState]=useState('idle');
+ const [seconds,setSeconds]=useState(0),[duration,setDuration]=useState(0),[volume,setVolume]=useState(.7),[error,setError]=useState('');
+ const [shuffle,setShuffle]=useState(false),[repeat,setRepeat]=useState('off'),[queueIds,setQueueIds]=useState([]);
+ const [history,setHistory]=useState(readHistory),[transition,setTransitionState]=useState(()=>clamp(Number(persisted(fadeKey,0)),0,12));
+ latest.current={files,index,shuffle,repeat,queueIds,transition};
+ const current=()=>decks.current[activeDeck.current]||null;
+ const orderOf=info=>(info.queueIds.length?info.queueIds.map(id=>info.files.findIndex(f=>f.id===id)).filter(i=>i>=0):info.files.map((_,i)=>i));
+ const neighbor=(atEnd=false)=>{
+  const info=latest.current,order=orderOf(info),pos=Math.max(0,order.indexOf(info.index));
+  const at=nextIndex({length:order.length,index:pos,shuffle:info.shuffle,repeat:info.repeat},atEnd);
+  return at>=0?order[at]:-1;
  };
- const select=async i=>{
-  const song=files[i],a=media.current;if(!song||!a)return;
-  a.pause();a.src=song.url;a.load();setPlayedIndexes(old=>old.concat(index).slice(-100));setIndex(i);setSeconds(0);setDuration(0);setState('loading');setError('');
-  await eq.activate();
-  try{await a.play();setHistory(recordListen(song))}catch(e){setState('paused');if(e.name!=='AbortError')setError('Dotknij Play, aby rozpocząć odtwarzanie.')}
+
+ useEffect(()=>{
+  const pair=[new Audio(),new Audio()];decks.current=pair;
+  pair.forEach((a,i)=>{
+   a.preload='auto';a.volume=.7;
+   a.addEventListener('timeupdate',()=>{
+    if(i!==activeDeck.current)return;
+    setSeconds(a.currentTime||0);
+    const info=latest.current,f=info.files[info.index],remaining=a.duration-a.currentTime;
+    if(f&&Number.isFinite(a.currentTime)&&Math.floor(a.currentTime)%5===0){
+      try{localStorage.setItem(positionKey,JSON.stringify({id:f.id,time:a.currentTime}))}catch{}
+    }
+    if(info.transition>0&&info.repeat!=='one'&&Number.isFinite(remaining)&&remaining>0&&remaining<=info.transition+.15&&!busy.current&&!a.paused){
+      const at=neighbor(true);if(at>=0&&at!==info.index)change.current?.(at,true);
+    }
+   });
+   a.addEventListener('loadedmetadata',()=>{if(i===activeDeck.current)setDuration(Number.isFinite(a.duration)?a.duration:0)});
+   a.addEventListener('durationchange',()=>{if(i===activeDeck.current)setDuration(Number.isFinite(a.duration)?a.duration:0)});
+   a.addEventListener('playing',()=>{if(i!==activeDeck.current)return;setState('playing');const info=latest.current,f=info.files[info.index];if(f&&recorded.current!==f.id){recorded.current=f.id;setHistory(recordListen(f))}});
+   a.addEventListener('pause',()=>{if(i===activeDeck.current)setState(a.ended?'stopped':'paused')});
+   a.addEventListener('waiting',()=>{if(i===activeDeck.current)setState('loading')});
+   a.addEventListener('error',()=>{if(i===activeDeck.current){setError('Nie można odtworzyć tego formatu w tej przeglądarce.');setState('error')}});
+   a.addEventListener('ended',()=>{if(i!==activeDeck.current)return;const at=neighbor(true);if(at>=0){change.current?.(at,false)}else{setState('stopped');setSeconds(a.duration||0)}});
+  });
+  let disposed=false;
+  readTracks().then(records=>{
+   if(disposed)return;
+   const restored=records.map(({blob,...meta})=>({...meta,url:URL.createObjectURL(blob)}));
+   urls.current.push(...restored.map(f=>f.url));setFiles(restored);setQueueIds(restored.map(f=>f.id));
+   const last=persisted(positionKey,null),idx=restored.findIndex(f=>f.id===last?.id);
+   if(idx>=0){setIndex(idx);pair[0].src=restored[idx].url;pair[0].load();pair[0].addEventListener('loadedmetadata',()=>{if(Number.isFinite(last.time)&&last.time>=0&&last.time<pair[0].duration){pair[0].currentTime=last.time;setSeconds(last.time)}},{once:true})}
+  }).catch(()=>{if(!disposed)setError('Nie można wczytać lokalnej biblioteki.')});
+  return()=>{disposed=true;clearTimeout(fadeTimer.current);pair.forEach(a=>{a.pause();a.removeAttribute('src');a.load()});urls.current.forEach(URL.revokeObjectURL)};
+ },[]);
+
+ const select=async(at,withFade=true)=>{
+  const info=latest.current,f=info.files[at];if(!f||!decks.current.length)return;
+  if(busy.current)return;
+  const currentDeck=activeDeck.current,old=decks.current[currentDeck];
+  const cross=Boolean(withFade&&info.transition>0&&!old.paused&&old.src&&at!==info.index);
+  const targetDeck=cross?1-currentDeck:currentDeck,target=decks.current[targetDeck];
+  if(cross)busy.current=true;
+  setError('');
+  try{
+   const ok=await eq.activate();
+   if(!ok){setError('Przetwarzanie audio Web Audio nie jest dostępne.');busy.current=false;return}
+   if(!cross){clearTimeout(fadeTimer.current);decks.current[1-currentDeck].pause();eq.setDeck(currentDeck);old.pause()}
+   target.src=f.url;target.load();target.volume=volume;
+   if(cross){eq.setDeck(currentDeck)}
+   // Playback starts from the user's interaction; both decks share the same EQ graph.
+   await target.play();
+   if(cross){eq.mixDecks(currentDeck,targetDeck,info.transition);activeDeck.current=targetDeck;fadeTimer.current=setTimeout(()=>{old.pause();old.removeAttribute('src');old.load();busy.current=false},info.transition*1000+150)}
+   recorded.current=null;setIndex(at);setSeconds(0);setDuration(0);setState('playing');
+   if(!cross)busy.current=false;
+  }catch(e){busy.current=false;if(cross){target.pause();eq.setDeck(currentDeck)}setState('paused');if(e.name!=='AbortError')setError('Nie można rozpocząć odtwarzania: '+e.message)}
+ };
+ change.current=select;
+
+ const importFiles=async list=>{
+  const input=Array.from(list||[]).filter(f=>AUDIO_EXT.test(f.name)||f.type.startsWith('audio/'));
+  const filtered=input.filter(f=>!latest.current.files.some(x=>x.filename===f.name&&x.size===f.size&&x.modified===f.lastModified));
+  if(!filtered.length){setError('Nie znaleziono nowych plików audio.');return}
+  const meta=await Promise.all(filtered.map(extractMetadata));
+  const added=filtered.map((file,i)=>({id:'local-'+Date.now()+'-'+i,title:meta[i].title,artist:meta[i].artist,album:meta[i].album,coverBlob:meta[i].coverBlob,url:URL.createObjectURL(file),filename:file.name,size:file.size,modified:file.lastModified,art:['night','violet','blue','ocean'][i%4]}));
+  urls.current.push(...added.map(x=>x.url));setFiles(old=>old.concat(added));setQueueIds(old=>old.concat(added.map(x=>x.id)));setError('');
+  const saved=await Promise.allSettled(added.map((f,i)=>{const {url,...data}=f;return storeTrack({...data,blob:filtered[i]})}));
+  if(saved.some(x=>x.status==='rejected'))setError('Brak miejsca: część plików dodano tylko do tej sesji.');
  };
  const toggle=async()=>{
-  const a=media.current;if(!a||!files.length)return;
-  if(!a.src){await select(index);return}
+  const a=current();if(!a||!latest.current.files.length)return;
+  if(!a.src){await select(latest.current.index,false);return}
   if(!a.paused){a.pause();return}
-  if(a.ended)a.currentTime=0;
-  await eq.activate();
-  try{setError('');await a.play()}catch(e){setState('paused');setError('Przeglądarka zablokowała odtwarzanie: '+e.message)}
+  try{await eq.activate();if(a.ended)a.currentTime=0;await a.play();setError('')}catch(e){setError('Nie można wznowić odtwarzania: '+e.message)}
  };
- useEffect(()=>{
-  if(!('mediaSession' in navigator)||!files.length)return;
-  const f=files[index];if(!f||typeof MediaMetadata==='undefined')return;
-  navigator.mediaSession.metadata=new MediaMetadata({title:f.title,artist:f.artist,album:f.album});
-  navigator.mediaSession.playbackState=state==='playing'?'playing':'paused';
-  const handlers={play:()=>media.current?.play().catch(()=>{}),pause:()=>media.current?.pause(),
-   previoustrack:()=>select((index-1+files.length)%files.length),
-   nexttrack:()=>select((index+1)%files.length),
-   seekto:({seekTime})=>{if(media.current&&Number.isFinite(seekTime))media.current.currentTime=seekTime}};
-  Object.entries(handlers).forEach(([key,fn])=>{try{navigator.mediaSession.setActionHandler(key,fn)}catch{}});
-  return()=>Object.keys(handlers).forEach(key=>{try{navigator.mediaSession.setActionHandler(key,null)}catch{}});
- },[files,index,state]);
- const remove=async id=>{const item=files.find(f=>f.id===id);if(!item)return;try{await removeTrack(id)}catch{setError('Nie można usunąć pliku z zapisanej biblioteki.');return}if(files[index]?.id===id){media.current?.pause();media.current?.removeAttribute('src');setState('stopped');setSeconds(0);setDuration(0);setIndex(0)}setFiles(old=>old.filter(f=>f.id!==id));setQueueIds(old=>old.filter(x=>x!==id));URL.revokeObjectURL(item.url);urls.current=urls.current.filter(u=>u!==item.url)};
- const seek=p=>{const a=media.current;if(a&&Number.isFinite(a.duration)){a.currentTime=Math.min(a.duration,Math.max(0,a.duration*p/100));setSeconds(a.currentTime)}};
- const setGain=v=>{const n=Math.max(0,Math.min(1,v));setVolume(n);if(media.current)media.current.volume=n};
- const order=queueIds.map(id=>files.findIndex(f=>f.id===id)).filter(i=>i>=0);
- const position=order.indexOf(index);
- const next=()=>{const n=nextIndex({length:order.length,index:Math.max(0,position),shuffle,repeat});if(n>=0)select(order[n])};
- const prev=()=>{const n=previousIndex({length:order.length,index:Math.max(0,position)});if(n>=0)select(order[n])};
- const move=(source,target)=>setQueueIds(ids=>reordered(ids,source,target));
- const addNext=id=>setQueueIds(ids=>{const p=Math.max(0,ids.indexOf(files[index]?.id));return [...ids.filter(x=>x!==id).slice(0,p+1),id,...ids.filter(x=>x!==id).slice(p+1)]});
+ const stop=()=>{clearTimeout(fadeTimer.current);busy.current=false;decks.current.forEach(a=>{a.pause();if(a.src)a.currentTime=0});setSeconds(0);setState('stopped')};
+ const seek=p=>{const a=current();if(a&&Number.isFinite(a.duration)&&a.duration>0){a.currentTime=clamp(a.duration*p/100,0,a.duration);setSeconds(a.currentTime)}};
+ const setGain=v=>{const n=clamp(v,0,1);setVolume(n);decks.current.forEach(a=>a.volume=n)};
+ const next=()=>{const at=neighbor(false);if(at>=0)select(at)};
+ const prev=()=>{const a=current();if(a&&a.currentTime>3){a.currentTime=0;return}const info=latest.current,order=orderOf(info),pos=order.indexOf(info.index);if(pos>0)select(order[pos-1],false)};
+ const remove=async id=>{
+  try{await removeTrack(id)}catch{setError('Nie można usunąć pliku.');return}
+  const f=latest.current.files.find(x=>x.id===id);if(f?.url){URL.revokeObjectURL(f.url);urls.current=urls.current.filter(x=>x!==f.url)}
+  if(latest.current.files[latest.current.index]?.id===id)stop();
+  setFiles(a=>a.filter(f=>f.id!==id));setQueueIds(a=>a.filter(x=>x!==id));setIndex(0);
+ };
+ const move=(from,to)=>setQueueIds(ids=>reordered(ids,from,to));
+ const addNext=id=>setQueueIds(ids=>{const cleaned=ids.filter(x=>x!==id),p=cleaned.indexOf(latest.current.files[latest.current.index]?.id);cleaned.splice(Math.max(0,p+1),0,id);return cleaned});
  const cycleRepeat=()=>setRepeat(v=>v==='off'?'all':v==='all'?'one':'off');
+ const setTransition=v=>{const n=clamp(Number(v),0,12);setTransitionState(n);try{localStorage.setItem(fadeKey,JSON.stringify(n))}catch{}};
  const clearPlays=()=>{clearHistory();setHistory([])};
- return {files,index,state,seconds,duration,volume,error,eq,importFiles,remove,select,toggle,seek,setGain,
- queueIds,shuffle,repeat,setShuffle,cycleRepeat,move,addNext,history,historyStats:historyStats(history),clearPlays,
- transition,setTransition,
- next,prev,
- stop:()=>{const a=media.current;if(a){a.pause();a.currentTime=0;setSeconds(0);setState('stopped')}}
- };
+ useEffect(()=>{
+  if(!('mediaSession' in navigator)||!files[index]||typeof MediaMetadata==='undefined')return;
+  const f=files[index];navigator.mediaSession.metadata=new MediaMetadata({title:f.title,artist:f.artist,album:f.album});
+  navigator.mediaSession.playbackState=state==='playing'?'playing':'paused';
+  const handlers={play:()=>toggle(),pause:()=>current()?.pause(),nexttrack:()=>next(),previoustrack:()=>prev(),seekto:e=>{if(Number.isFinite(e.seekTime)&&current())current().currentTime=e.seekTime}};
+  for(const [key,fn] of Object.entries(handlers))try{navigator.mediaSession.setActionHandler(key,fn)}catch{}
+  return()=>{for(const key of Object.keys(handlers))try{navigator.mediaSession.setActionHandler(key,null)}catch{}};
+ },[files,index,state,shuffle,repeat,queueIds]);
+
+ return {files,index,state,seconds,duration,volume,error,eq,importFiles,remove,select,toggle,stop,seek,setGain,next,prev,
+ queueIds,move,addNext,shuffle,setShuffle,repeat,cycleRepeat,transition,setTransition,
+ history,historyStats:historyStats(history),clearPlays};
 }
