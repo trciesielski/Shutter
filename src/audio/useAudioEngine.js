@@ -13,7 +13,7 @@ function persisted(key,fallback){try{return JSON.parse(localStorage.getItem(key)
 
 export function useAudioEngine(){
  const decks=useRef([]),activeDeck=useRef(0),urls=useRef([]),latest=useRef({});
- const change=useRef(null),busy=useRef(false),fadeTimer=useRef(null),recorded=useRef(null),activeTrackId=useRef(null),supportsDsp=useRef(false),upNext=useRef(-1);
+ const change=useRef(null),busy=useRef(false),fadeTimer=useRef(null),recorded=useRef(null),activeTrackId=useRef(null),supportsDsp=useRef(false),upNext=useRef(-1),unshuffledOrder=useRef(null);
  const eq=useEqualizer(decks);
  const [files,setFiles]=useState([]),[index,setIndex]=useState(0),[state,setState]=useState('idle');
  const [seconds,setSeconds]=useState(0),[duration,setDuration]=useState(0),[volume,setVolume]=useState(.7),[error,setError]=useState('');
@@ -25,7 +25,7 @@ export function useAudioEngine(){
  const neighbor=(atEnd=false)=>{
   const info=latest.current,order=orderOf(info),pos=Math.max(0,order.indexOf(info.index));
   if(upNext.current>=0&&order.includes(upNext.current))return upNext.current;
-  const at=nextIndex({length:order.length,index:pos,shuffle:info.shuffle,repeat:info.repeat},atEnd);
+  const at=nextIndex({length:order.length,index:pos,shuffle:false,repeat:info.repeat},atEnd);
   const resolved=at>=0?order[at]:-1;
   if(atEnd&&resolved>=0)upNext.current=resolved;
   return resolved;
@@ -56,7 +56,7 @@ export function useAudioEngine(){
    a.addEventListener('pause',()=>{if(i===activeDeck.current)setState(a.ended?'stopped':'paused')});
    a.addEventListener('waiting',()=>{if(i===activeDeck.current)setState('loading')});
    a.addEventListener('error',()=>{if(i===activeDeck.current){setError('Nie można odtworzyć tego formatu w tej przeglądarce.');setState('error')}});
-   a.addEventListener('ended',()=>{if(i!==activeDeck.current)return;const at=neighbor(true);if(at>=0){change.current?.(at,false)}else{setState('stopped');setSeconds(a.duration||0)}});
+   a.addEventListener('ended',()=>{if(i!==activeDeck.current)return;const info=latest.current;if(info.repeat==='one'){a.currentTime=0;a.play().catch(()=>setState('paused'));return}const at=neighbor(true);if(at>=0){change.current?.(at,false)}else{setState('stopped');setSeconds(a.duration||0)}});
   });
   let disposed=false;
   readTracks().then(records=>{
@@ -136,6 +136,22 @@ export function useAudioEngine(){
  };
  const move=(from,to)=>setQueueIds(ids=>reordered(ids,from,to));
  const addNext=id=>setQueueIds(ids=>{const cleaned=ids.filter(x=>x!==id),p=cleaned.indexOf(latest.current.files[latest.current.index]?.id);cleaned.splice(Math.max(0,p+1),0,id);return cleaned});
+ const toggleShuffle=()=>{
+  upNext.current=-1;
+  if(!shuffle){
+   unshuffledOrder.current=[...queueIds];
+   const now=latest.current.files[index]?.id;
+   const others=queueIds.filter(id=>id!==now);
+   for(let i=others.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[others[i],others[j]]=[others[j],others[i]]}
+   setQueueIds(now?[now,...others]:others);
+   setShuffle(true);
+  }else{
+   const original=unshuffledOrder.current||queueIds;
+   setQueueIds([...original.filter(id=>queueIds.includes(id)),...queueIds.filter(id=>!original.includes(id))]);
+   unshuffledOrder.current=null;
+   setShuffle(false);
+  }
+ };
  const cycleRepeat=()=>{upNext.current=-1;setRepeat(v=>v==='off'?'all':v==='all'?'one':'off')};
  const setTransition=v=>{const n=clamp(Number(v),0,12);setTransitionState(n);try{localStorage.setItem(fadeKey,JSON.stringify(n))}catch{}};
  const clearPlays=()=>{clearHistory();setHistory([])};
@@ -149,6 +165,6 @@ export function useAudioEngine(){
  },[files,index,state,shuffle,repeat,queueIds]);
 
  return {files,index,state,seconds,duration,volume,error,eq,importFiles,remove,select,toggle,stop,seek,setGain,next,prev,
- queueIds,move,addNext,shuffle,setShuffle:v=>{upNext.current=-1;setShuffle(v)},repeat,cycleRepeat,transition,setTransition,
+ queueIds,move,addNext,shuffle,toggleShuffle,repeat,cycleRepeat,transition,setTransition,
  history,historyStats:historyStats(history),clearPlays};
 }
