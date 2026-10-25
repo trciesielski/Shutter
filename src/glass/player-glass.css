@@ -458,3 +458,23 @@
   max-height:calc(100dvh - 20px - env(safe-area-inset-bottom,0px));
  }
 }
+
+/* Appearance controls affect the real fixed player and its expanded panel. */
+.shutter-glass{
+ background:linear-gradient(130deg,rgba(255,255,255,.035),rgba(255,255,255,.006) 54%,rgba(130,110,210,.014)),rgba(17,18,30,var(--glass-opacity,.33));
+ -webkit-backdrop-filter:blur(var(--glass-blur,9px)) saturate(72%);
+ backdrop-filter:blur(var(--glass-blur,9px)) saturate(72%);
+ box-shadow:inset 0 1px rgba(255,255,255,.045),inset 0 -1px rgba(230,226,255,.025),0 15px 38px rgba(0,0,0,.17),0 0 calc(var(--glass-glow,.35) * 38px) rgba(145,100,248,calc(var(--glass-glow,.35) * .22));
+}
+.shutter-glass::before{opacity:var(--glass-glow,.35)}
+.shutter-glass.is-pressed::before{opacity:var(--glass-glow,.35)}
+:root[data-theme=light] .shutter-glass{
+ background:linear-gradient(130deg,rgba(255,255,255,.18),rgba(245,240,255,.045)),rgba(227,227,235,var(--glass-opacity,.33));
+ box-shadow:inset 0 1px rgba(255,255,255,.4),0 14px 35px rgba(55,50,90,.13),0 0 calc(var(--glass-glow,.35) * 38px) rgba(145,100,248,calc(var(--glass-glow,.35) * .18));
+}
+.glass-look-settings{display:grid;gap:18px}
+.glass-look-control{display:grid;gap:10px;font-size:13px}
+.glass-look-control>span{display:flex;justify-content:space-between;gap:12px}
+.glass-look-control strong{font-variant-numeric:tabular-nums}
+.glass-look-control input{width:100%;accent-color:var(--accent)}
+.glass-look-reset{justify-self:start;padding:12px 17px;border-radius:12px;background:var(--accentbg);color:var(--text);font-weight:700;font-size:12px}
