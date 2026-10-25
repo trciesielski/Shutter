@@ -1,4 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react';
+import {Maximize2,Minimize2} from 'lucide-react';
 import {VISUAL_MODES,resolveVisualMode} from './modes.js';
 import './visualizer.css';
 
@@ -10,13 +11,15 @@ function createStars(count){
  return Array.from({length:count},(_,i)=>{seed=(seed*1664525+1013904223)>>>0;const a=seed/4294967295;seed=(seed*1664525+1013904223)>>>0;return {x:a,y:seed/4294967295,r:1+(i%3)*.65,phase:i*2.39996}});
 }
 const stars=createStars(100);
-export default function MusicVisualizer({song,playing,bins=[],onPlay,onImport}){
+export default function MusicVisualizer({song,playing,bins=[]}){
  const canvas=useRef(null),frame=useRef(0),spectrum=useRef(Array(32).fill(0));
  const [settings,setSettings]=useState(read),[reduced,setReduced]=useState(()=>window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false);
  const [coverUrl,setCoverUrl]=useState(null);
+ const [maximized,setMaximized]=useState(false);
  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(settings))}catch{}},[settings]);
  useEffect(()=>{const mq=window.matchMedia('(prefers-reduced-motion: reduce)');const update=()=>setReduced(mq.matches);mq.addEventListener?.('change',update);return()=>mq.removeEventListener?.('change',update)},[]);
  useEffect(()=>{if(!song?.coverBlob){setCoverUrl(null);return}const u=URL.createObjectURL(song.coverBlob);setCoverUrl(u);return()=>URL.revokeObjectURL(u)},[song?.coverBlob]);
+ useEffect(()=>{if(!maximized)return;const old=document.body.style.overflow;document.body.style.overflow='hidden';const onKey=e=>{if(e.key==='Escape')setMaximized(false)};window.addEventListener('keydown',onKey);return()=>{document.body.style.overflow=old;window.removeEventListener('keydown',onKey)}},[maximized]);
  const mode=resolveVisualMode(settings.mode,!!coverUrl,reduced);
  const input=useRef({});input.current={mode,playing,reduced,intensity:settings.intensity,bins};
  useEffect(()=>{
@@ -52,15 +55,18 @@ export default function MusicVisualizer({song,playing,bins=[],onPlay,onImport}){
   frame.current=requestAnimationFrame(draw);
   return()=>{live=false;cancelAnimationFrame(frame.current)};
  },[mode,playing,reduced]);
- return <section className={'music-visualizer mode-'+mode} aria-label="Wizualizacja aktualnego utworu">
-  <div className="visualizer-head"><div><span className="visualizer-kicker">SHUTTER / LIVE AUDIO</span><h2>{song?'Teraz odtwarzane':'Twoja scena dźwięku'}</h2></div><label className="visualizer-mode"><span>Wizualizacja</span><select aria-label="Tryb wizualizacji" value={settings.mode} onChange={e=>setSettings(s=>({...s,mode:e.target.value}))}>{VISUAL_MODES.map(([id,label])=><option value={id} key={id}>{label}</option>)}</select></label></div>
-  <div className="visualizer-scene">
-   <canvas ref={canvas} aria-hidden="true"/>
-   {mode==='cover'&&<div className="visualizer-cover">{coverUrl?<img src={coverUrl} alt={'Okładka '+(song?.album||song?.title||'utworu')}/>:<div className="visualizer-fallback"><span>SHUTTER</span><strong>♪</strong></div>}</div>}
-   {!song&&<span className="visualizer-empty-label">Dodaj muzykę i włącz odtwarzanie</span>}
-   <div className="visualizer-vignette"/>
-  </div>
-  <div className="visualizer-bottom"><div className="visualizer-title"><strong>{song?.title||'Brak utworu'}</strong><span>{song?.artist||'Muzyka lokalna'}</span></div><button onClick={song?onPlay:onImport} className="visualizer-action">{song?(playing?'Pauza':'Odtwórz'):'Dodaj muzykę'}</button></div>
-  <div className="visualizer-options"><label>Intensywność <input aria-label="Intensywność wizualizacji" type="range" min="10" max="100" step="5" value={settings.intensity} onChange={e=>setSettings(s=>({...s,intensity:Number(e.target.value)}))}/></label><small>{settings.mode==='auto'?'Auto dostosowuje tryb do okładki i ustawień ruchu.':reduced?'Ograniczony ruch jest aktywny w systemie.':'Efekt reaguje na sygnał odtwarzanej muzyki.'}</small></div>
- </section>
+ return <section className={'music-visualizer mode-'+mode+(maximized?' is-maximized':'')} aria-label="Wizualizacja odtwarzanego utworu">
+ <div className="visualizer-head">
+   <label className="visualizer-mode"><select aria-label="Tryb wizualizacji" value={settings.mode} onChange={e=>setSettings(v=>({...v,mode:e.target.value}))}>{VISUAL_MODES.map(([id,label])=><option value={id} key={id}>{label}</option>)}</select></label>
+   <div className="visualizer-head-actions">
+     <label className="visualizer-intensity" title="Intensywność efektu"><span>Intensywność</span><input aria-label="Intensywność wizualizacji" type="range" min="10" max="100" step="5" value={settings.intensity} onChange={e=>setSettings(v=>({...v,intensity:Number(e.target.value)}))}/></label>
+     <button className="visualizer-maximize" title={maximized?'Zamknij pełny ekran':'Maksymalizuj wizualizację'} aria-label={maximized?'Zamknij wizualizację':'Maksymalizuj wizualizację'} onClick={()=>setMaximized(v=>!v)}>{maximized?<Minimize2 size={18}/>:<Maximize2 size={18}/>}</button>
+   </div>
+ </div>
+ <div className="visualizer-scene">
+  <canvas ref={canvas} aria-hidden="true"/>
+  {mode==='cover'&&<div className="visualizer-cover">{coverUrl?<img src={coverUrl} alt="Okładka aktualnego utworu"/>:<div className="visualizer-fallback" aria-hidden="true"><strong>♪</strong></div>}</div>}
+  <div className="visualizer-vignette"/>
+ </div>
+ </section>;
 }
