@@ -337,3 +337,16 @@
 .shutter-glass .player-bar-v5 .player-song-expand .player-song-meta{min-width:0;max-width:calc(100% - 28px);flex:0 1 auto}
 .shutter-glass .player-bar-v5 .player-song-expand .player-song-meta strong{color:var(--text);opacity:1}
 .shutter-glass .player-bar-v5 .player-song-expand .player-song-meta small{color:var(--muted);opacity:1}
+
+/* PLAYLIST SCROLL: toolbar/name stay fixed, only song list scrolls. */
+.local-playlists.playlist-open .playlist-detail{display:flex;flex-direction:column;min-height:0;max-height:calc(100dvh - 280px);overflow:hidden}
+.local-playlists.playlist-open .playlist-detail-head,
+.local-playlists.playlist-open .playlist-detail>h2,
+.local-playlists.playlist-open .playlist-detail>p{flex-shrink:0}
+.local-playlists.playlist-open .playlist-detail-scroll{
+ overflow-y:auto;overscroll-behavior:contain;min-height:0;flex:1;
+ scrollbar-width:thin;-webkit-overflow-scrolling:touch;padding-right:4px;
+}
+@media(max-width:800px){
+ .local-playlists.playlist-open .playlist-detail{max-height:calc(100dvh - 250px);min-height:180px}
+}
