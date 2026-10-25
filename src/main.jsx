@@ -56,10 +56,10 @@ function App(){
  <PlayerGlass><div className="player-bar player-bar-v5">
    <div className="player-song"><div className="player-song-meta"><strong>{song.title}</strong><small>{song.artist} · {song.album}</small></div></div>
    <div className="player-middle">
-    <div className="progress-line"><span>{formatClock(currentSeconds)}</span><input type="range" min="0" max="100" step=".1" value={progress} onChange={e=>setProgress(Number(e.target.value))} aria-label="Pozycja demonstracyjnego utworu"/><span>{formatClock(totalSeconds)}</span></div>
+    <div className="progress-line"><span>{formatClock(currentSeconds)}</span><input type="range" min="0" max="100" step=".1" value={progress} onChange={e=>setProgress(Number(e.target.value))} aria-label="Pozycja demonstracyjnego utworu" style={{"--seek-progress":`${progress}%`}}/><span>{formatClock(totalSeconds)}</span></div>
     <div className="player-controls">
      <button aria-label="Poprzedni" onClick={prev}><SkipBack fill="currentColor"/></button>
-     <button aria-label={playing?'Pauza':'Odtwórz'} className="play-button" onClick={()=>{if(progress>=100)setProgress(0);setPlaying(v=>!v)}}>{playing?<Pause fill="currentColor"/>:<Play fill="currentColor"/>}</button>
+     <button aria-label={playing?'Pauza':'Odtwórz'} className={`play-button ${playing?"is-playing":""}`} onClick={()=>{if(progress>=100)setProgress(0);setPlaying(v=>!v)}}>{playing?<Pause fill="currentColor"/>:<Play fill="currentColor"/>}</button>
      <button aria-label="Następny" onClick={next}><SkipForward fill="currentColor"/></button>
     </div>
     <div className="playback-state"><span className={playing?'state-dot active':'state-dot'}/>{playing?'ODTWARZANIE · DEMO':progress>=100?'ZATRZYMANO · DEMO':'PAUZA · DEMO'}</div>
