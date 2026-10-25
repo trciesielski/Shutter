@@ -1,9 +1,11 @@
 import {useEffect,useRef,useState} from 'react';
 import {readTracks,storeTrack,removeTrack} from './libraryStore.js';
+import {useEqualizer} from './useEqualizer.js';
 const allowed=/\.(mp3|wav|ogg|m4a|aac|flac|opus)$/i;
 export function useAudioEngine(){
  const media=useRef(null),urls=useRef([]),latest=useRef({files:[],index:0}),[files,setFiles]=useState([]),[index,setIndex]=useState(0);
  latest.current={files,index};
+ const eq=useEqualizer(media);
  const [state,setState]=useState('idle'),[seconds,setSeconds]=useState(0),[duration,setDuration]=useState(0),[volume,setVolume]=useState(.7),[error,setError]=useState('');
  useEffect(()=>{const a=new Audio();media.current=a;a.preload='metadata';a.volume=.7;
  const onTime=()=>setSeconds(a.currentTime||0),onDuration=()=>setDuration(Number.isFinite(a.duration)?a.duration:0);
@@ -25,6 +27,7 @@ export function useAudioEngine(){
  const select=async i=>{
   const song=files[i],a=media.current;if(!song||!a)return;
   a.pause();a.src=song.url;a.load();setIndex(i);setSeconds(0);setDuration(0);setState('loading');setError('');
+  await eq.activate();
   try{await a.play()}catch(e){setState('paused');if(e.name!=='AbortError')setError('Dotknij Play, aby rozpocząć odtwarzanie.')}
  };
  const toggle=async()=>{
@@ -32,6 +35,7 @@ export function useAudioEngine(){
   if(!a.src){await select(index);return}
   if(!a.paused){a.pause();return}
   if(a.ended)a.currentTime=0;
+  await eq.activate();
   try{setError('');await a.play()}catch(e){setState('paused');setError('Przeglądarka zablokowała odtwarzanie: '+e.message)}
  };
  useEffect(()=>{
@@ -49,7 +53,7 @@ export function useAudioEngine(){
  const remove=async id=>{const item=files.find(f=>f.id===id);if(!item)return;try{await removeTrack(id)}catch{setError('Nie można usunąć pliku z zapisanej biblioteki.');return}if(files[index]?.id===id){media.current?.pause();media.current?.removeAttribute('src');setState('stopped');setSeconds(0);setDuration(0);setIndex(0)}setFiles(old=>old.filter(f=>f.id!==id));URL.revokeObjectURL(item.url);urls.current=urls.current.filter(u=>u!==item.url)};
  const seek=p=>{const a=media.current;if(a&&Number.isFinite(a.duration)){a.currentTime=Math.min(a.duration,Math.max(0,a.duration*p/100));setSeconds(a.currentTime)}};
  const setGain=v=>{const n=Math.max(0,Math.min(1,v));setVolume(n);if(media.current)media.current.volume=n};
- return {files,index,state,seconds,duration,volume,error,importFiles,remove,select,toggle,seek,setGain,
+ return {files,index,state,seconds,duration,volume,error,eq,importFiles,remove,select,toggle,seek,setGain,
  next:()=>files.length&&select((index+1)%files.length),
  prev:()=>files.length&&select((index-1+files.length)%files.length),
  stop:()=>{const a=media.current;if(a){a.pause();a.currentTime=0;setSeconds(0);setState('stopped')}}
