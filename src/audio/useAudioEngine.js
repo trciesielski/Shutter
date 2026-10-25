@@ -7,12 +7,12 @@ import {readHistory,recordListen,clearHistory,historyStats} from './listeningHis
 const allowed=/\.(mp3|wav|ogg|m4a|aac|flac|opus)$/i;
 export function useAudioEngine(){
  const media=useRef(null),urls=useRef([]),latest=useRef({files:[],index:0}),[files,setFiles]=useState([]),[index,setIndex]=useState(0);
- latest.current={files,index,shuffle,repeat,queueIds};
  const eq=useEqualizer(media);
  const [shuffle,setShuffle]=useState(false),[repeat,setRepeat]=useState('off'),[history,setHistory]=useState(readHistory);
  const [queueIds,setQueueIds]=useState([]),[playedIndexes,setPlayedIndexes]=useState([]);
  const [transition,setTransition]=useState(0);
  const transitionRef=useRef(0);
+ latest.current={files,index,shuffle,repeat,queueIds};
  const [state,setState]=useState('idle'),[seconds,setSeconds]=useState(0),[duration,setDuration]=useState(0),[volume,setVolume]=useState(.7),[error,setError]=useState('');
  useEffect(()=>{const a=new Audio();media.current=a;a.preload='metadata';a.volume=.7;
  const onTime=()=>setSeconds(a.currentTime||0),onDuration=()=>setDuration(Number.isFinite(a.duration)?a.duration:0);
