@@ -1,6 +1,6 @@
 import React,{useState,useRef,useEffect} from 'react';
 import {MoreVertical,Heart,Plus,ListPlus,Play,Pause,Trash2} from 'lucide-react';
-export default function LibraryTrack({track,index,active,playing,onPlay,onToggle,onRemove,playlists}){
+export default function LibraryTrack({track,index,active,playing,onPlay,onToggle,onRemove,onPlayNext,playlists}){
  const [open,setOpen]=useState(false),[creating,setCreating]=useState(false),[name,setName]=useState('');
  const ref=useRef(null);
  const [artUrl,setArtUrl]=useState(null);
@@ -14,6 +14,7 @@ export default function LibraryTrack({track,index,active,playing,onPlay,onToggle
   <button type="button" className="library-track-menu-trigger" aria-label={'Menu utworu '+track.title} onClick={()=>setOpen(x=>!x)} aria-expanded={open}><MoreVertical size={21}/></button>
   {open&&<div className="library-track-popover" role="group" aria-label={'Akcje dla '+track.title}>
    <button onClick={()=>{onPlay(index);setOpen(false)}}><Play size={17}/> Odtwórz</button>
+   {onPlayNext&&<button onClick={()=>{onPlayNext(track.id);setOpen(false)}}><ListPlus size={17}/> Odtwórz jako następny</button>}
    <button onClick={()=>{playlists.ensureFavorite(track.id);setOpen(false)}}><Heart size={17} fill={playlists.isFavorite(track.id)?'currentColor':'none'}/>{playlists.isFavorite(track.id)?'Usuń z Ulubionych':'Dodaj do Ulubionych'}</button>
    <div className="library-track-divider"/>
    <span className="library-track-menu-caption">Dodaj do playlisty</span>
