@@ -1,0 +1,63 @@
+/* Shutter Glass V2: one canonical player surface across web platforms. */
+.shutter-glass{
+ position:fixed;z-index:30;left:14px;right:14px;bottom:calc(12px + env(safe-area-inset-bottom,0px));
+ border-radius:30px;isolation:isolate;
+ --touch-x:50%;--touch-y:5%;
+ background:linear-gradient(130deg,rgba(255,255,255,.045),rgba(255,255,255,.006) 54%,rgba(130,110,210,.035)),rgba(25,26,50,.20);
+ box-shadow:inset 0 1px rgba(255,255,255,.12),0 15px 38px rgba(0,0,0,.19);
+ -webkit-backdrop-filter:blur(17px) saturate(140%);
+ backdrop-filter:blur(17px) saturate(140%);
+ overflow:hidden;transition:background .2s ease,transform .18s ease;
+}
+.shutter-glass:before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+ background:radial-gradient(ellipse 45% 70% at var(--touch-x) var(--touch-y),rgba(255,255,255,.12),transparent 70%);
+ opacity:.55;transition:opacity .2s ease}
+.shutter-glass.is-pressed:before{opacity:1}
+:root[data-theme=light] .shutter-glass{
+ background:linear-gradient(130deg,rgba(255,255,255,.32),rgba(245,240,255,.10)),rgba(215,213,235,.21);
+ box-shadow:inset 0 1px rgba(255,255,255,.4),0 14px 35px rgba(55,50,90,.13)
+}
+.shutter-glass .player-bar{
+ position:relative;inset:auto!important;width:100%;height:104px;min-width:0;z-index:1;
+ background:transparent;border:0;box-shadow:none;display:grid;
+ grid-template-columns:minmax(0,1fr) minmax(220px,1.15fr) minmax(0,1fr);
+ padding:0 24px;gap:12px;align-items:center;
+}
+.shutter-glass .player-song{min-width:0;overflow:hidden}
+.shutter-glass .player-song-meta{min-width:0;flex:1}
+.shutter-glass .player-controls{display:flex;align-items:center;justify-content:center;gap:16px}
+.shutter-glass .player-controls button:not(:disabled){
+ display:grid;place-items:center;flex:0 0 48px;padding:0;
+ width:48px;height:48px;border:0;border-radius:50%;color:var(--text);
+ background:linear-gradient(145deg,rgba(255,255,255,.13),rgba(140,128,200,.075));
+ box-shadow:inset 0 1px rgba(255,255,255,.13),0 4px 12px rgba(0,0,0,.12);
+ transition:transform .18s ease,filter .18s ease
+}
+.shutter-glass .player-controls button:not(:disabled):active{transform:scale(.93);filter:brightness(1.12)}
+.shutter-glass .player-controls button.play-button:not(:disabled){
+ flex:0 0 78px;width:78px;height:78px;border-radius:50%;
+ color:#fff;
+ background:linear-gradient(145deg,#c1afff 0%,#9569ff 40%,#6b3fda 100%);
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.34),0 8px 23px rgba(110,71,220,.34)
+}
+.shutter-glass .player-controls button.play-button:not(:disabled) svg{width:31px;height:31px}
+.shutter-glass .player-controls button:not(.play-button):not(:disabled) svg{width:23px;height:23px}
+.shutter-glass .player-controls button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:950px){.shutter-glass .player-right{display:none}.shutter-glass .player-bar{grid-template-columns:minmax(0,1fr) auto}}
+@media(max-width:650px){
+ .shutter-glass{left:8px;right:8px;bottom:calc(9px + env(safe-area-inset-bottom,0px));border-radius:28px}
+ .shutter-glass .player-bar{height:126px;padding:7px 12px 10px;gap:2px;display:flex;flex-direction:column;align-items:stretch;justify-content:center}
+ .shutter-glass .player-song{width:100%;height:30px;flex:0 0 30px}
+ .shutter-glass .player-cover{width:26px;height:26px;flex-shrink:0}
+ .shutter-glass .player-song-meta strong{font-size:12px}
+ .shutter-glass .player-song-meta small,.shutter-glass .player-song>button{display:none}
+ .shutter-glass .player-middle{width:100%;display:flex;justify-content:center}
+ .shutter-glass .player-controls{gap:21px}
+ .shutter-glass .player-controls button:not(:disabled){flex:0 0 52px;width:52px;height:52px}
+ .shutter-glass .player-controls button.play-button:not(:disabled){flex:0 0 76px;width:76px;height:76px}
+ .shutter-glass .player-controls button:disabled{display:none}
+ .shutter-glass .progress-line{display:none}
+}
+@media(max-width:355px){.shutter-glass .player-controls{gap:13px}}
+@media(prefers-reduced-motion:reduce){.shutter-glass,.shutter-glass:before,.shutter-glass button{transition:none!important}}
+@media(prefers-reduced-transparency:reduce){.shutter-glass{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
