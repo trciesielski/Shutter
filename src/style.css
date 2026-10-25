@@ -48,3 +48,6 @@ html,body,#root{max-width:100%;overflow-x:clip}
 }
 .album-card:hover .album-cover{transform:scale(1.08) translateY(-2px)}
 @media(max-width:510px){.album-card .album-cover{transform:scale(1.06)}.album-card:hover .album-cover{transform:scale(1.06)}}
+
+/* Empty personal music collection — no fake tracks */
+.shutter-empty{padding:24px 18px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);font-size:13px;line-height:1.6}
