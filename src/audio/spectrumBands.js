@@ -10,7 +10,7 @@ export function spectrumBands(bytes,sampleRate=44100){
  });
 }
 export function spectrumEnergy(bins){
- const avg=(a,b)=>bins.slice(a,b).reduce((s,n)=>s+Number(n||0),0)/Math.max(1,b-a)/100;
+ const avg=(a,b)=>{const section=bins.slice(a,b).map(v=>Number(v)||0);if(!section.length)return 0;const mean=section.reduce((sum,v)=>sum+v,0)/section.length;return (mean*.55+Math.max(...section)*.45)/100};
  return {bass:avg(0,12),mids:avg(12,24),treble:avg(24,32)};
 }
 
@@ -38,7 +38,7 @@ export function pcmSpectrumBands(samples,sampleRate=44100){
    best=Math.max(best,amp);
   }
   // Converts measured sinusoid amplitude to 0..100, preserving silence.
-  result.push(Math.round(clamp(100*Math.sqrt(best*3),0,100)));
+  result.push(clamp(320*Math.sqrt(best*3),0,100));
  }
  return result;
 }
