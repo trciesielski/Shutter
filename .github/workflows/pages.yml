@@ -20,6 +20,8 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install
+      - name: Audio regression tests
+        run: npm test
       - name: Build preview
         run: npm run build
       - uses: actions/upload-pages-artifact@v3
