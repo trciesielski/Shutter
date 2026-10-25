@@ -501,7 +501,20 @@
 .library-track-cover-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .library-cover-play{position:relative;z-index:1}
 
-/* Make the seek control usable with a finger without changing its thin visual rail. */
-.shutter-glass .progress-line input[type="range"]{height:26px!important;background-clip:content-box;padding:11px 0;box-sizing:border-box;touch-action:none;position:relative;z-index:3}
-.shutter-glass .progress-line input[type="range"]::-webkit-slider-thumb{width:18px;height:18px}
+/* Visually thin 4px seek rail with a larger transparent finger hit area. */
+.shutter-glass .progress-line input[type="range"]{
+ height:26px!important;padding:0!important;box-sizing:border-box;
+ background:transparent!important;touch-action:none;position:relative;z-index:3;
+}
+.shutter-glass .progress-line{position:relative}
+.shutter-glass .progress-line input[type="range"]::-webkit-slider-runnable-track{
+ height:4px;border-radius:999px;
+ background:linear-gradient(to right,#946cff 0%,#946cff var(--seek-progress,0%),rgba(231,225,255,.24) var(--seek-progress,0%),rgba(231,225,255,.24) 100%);
+}
+.shutter-glass .progress-line input[type="range"]::-moz-range-track{
+ height:4px;border-radius:999px;
+ background:linear-gradient(to right,#946cff 0%,#946cff var(--seek-progress,0%),rgba(231,225,255,.24) var(--seek-progress,0%),rgba(231,225,255,.24) 100%);
+}
+.shutter-glass .progress-line input[type="range"]::-webkit-slider-thumb{width:15px;height:15px;margin-top:-5.5px}
+.shutter-glass .progress-line input[type="range"]::-moz-range-thumb{width:15px;height:15px}
 .shutter-glass .progress-line input[type="range"]:disabled{opacity:.45;cursor:default}
