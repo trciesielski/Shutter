@@ -67,3 +67,11 @@ html.visualizer-backdrop-active .music-visualizer .visualizer-maximize{backdrop-
 .visualizer-diagnostic meter{width:100%;height:12px;accent-color:var(--accent)}
 .visualizer-diagnostic strong{text-align:right;font-variant-numeric:tabular-nums;font-size:10px}
 .music-visualizer.is-away.is-maximized .visualizer-diagnostic{display:none}
+
+/* Neon Spectrum PRO: WebGL and Canvas share the same visual footprint. */
+.music-visualizer .visualizer-scene canvas.neon-spectrum-canvas,
+.visualizer-scene-backdrop canvas.neon-spectrum-canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.music-visualizer.mode-neon .visualizer-scene:before{opacity:.3}
+.music-visualizer.mode-neon .visualizer-vignette{opacity:.48}
+.visualizer-scene-backdrop .neon-spectrum-canvas{opacity:.78}
+@media(prefers-reduced-motion:reduce){.neon-spectrum-canvas{animation:none}}
