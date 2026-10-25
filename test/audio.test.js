@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {nextIndex,previousIndex,reordered} from '../src/audio/queueLogic.js';
 import {extractMetadata} from '../src/audio/musicMetadata.js';
+import {equalPowerCurves} from '../src/audio/crossfadeMath.js';
 import {historyStats} from '../src/audio/listeningHistory.js';
 
 test('sequential advances and stops at end',()=>{
@@ -36,4 +37,11 @@ test('ID3v2 title and artist are decoded',async()=>{
 });
 test('history groups listens by id',()=>{
  assert.deepEqual(historyStats([{id:'a'},{id:'b'},{id:'a'}]),[['a',2],['b',1]]);
+});
+
+test('crossfade maintains approximately equal power at midpoint',()=>{
+ const {fadeIn,fadeOut}=equalPowerCurves(129);
+ assert.equal(fadeOut[0],1);assert.ok(fadeIn[0]<1e-6);
+ assert.ok(Math.abs(fadeIn[64]**2+fadeOut[64]**2-1)<1e-5);
+ assert.ok(fadeIn[128]>0.999);assert.ok(Math.abs(fadeOut[128])<1e-5);
 });
