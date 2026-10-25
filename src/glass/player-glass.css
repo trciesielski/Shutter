@@ -322,3 +322,18 @@
 .player-expanded-empty{color:var(--muted);font-size:13px;line-height:1.6;padding:22px 0 18px}
 @media(max-width:800px){.shutter-glass .player-expanded-panel{padding:18px 19px 12px;max-height:min(48vh,390px)}}
 @media(prefers-reduced-motion:reduce){.player-song-expand>svg{transition:none}}
+
+/* FIX: legacy mobile .player-song > button {display:none} hid the expandable title. */
+.shutter-glass .player-bar-v5 .player-song > button.player-song-expand{
+ display:flex!important;
+ width:100%;
+ min-width:0;
+ margin:0;
+ padding:4px 12px;
+ justify-content:center;
+ align-items:center;
+ color:var(--text);
+}
+.shutter-glass .player-bar-v5 .player-song-expand .player-song-meta{min-width:0;max-width:calc(100% - 28px);flex:0 1 auto}
+.shutter-glass .player-bar-v5 .player-song-expand .player-song-meta strong{color:var(--text);opacity:1}
+.shutter-glass .player-bar-v5 .player-song-expand .player-song-meta small{color:var(--muted);opacity:1}
