@@ -39,7 +39,9 @@ void main(){
  c+=purple*(.018+.080*bass)*exp(-radius*4.)*power;
  c+=cyan*(.010+.036*mid)*exp(-length(uv-vec2(-.25,.17))*4.)*power;
  float ripple=.012*sin(8.*a+u_time*.42+mid*3.)*(.35+mid);
- float inner=.18+beat*.021+ripple*.25;
+ float inner=.18+beat*.030+ripple*.25;
+ float corona=exp(-pow((radius-inner)/.045,2.));
+ c+=mix(magenta,cyan,.5+.5*sin(a*1.8))*corona*(.045+.36*beat+.12*mid)*power;
  float ring=line(radius-inner,.0025)+line(radius-inner,.013)*.30;
  c+=mix(magenta,cyan,smoothstep(-1.,1.,sin(a*2.+.5)))*ring*(.5+1.8*bass)*power;
  // Multi-layer segmented concentric rings, luminous but not constant bands.
@@ -54,7 +56,8 @@ void main(){
   float segment=line(radius-rr,.0026+energy*.006)*gate;
   vec3 hue=mix(magenta,cyan,.5+.5*sin(a*2.1+f*1.8));
   c+=hue*segment*(.16+energy*2.5+beat*.38)*power;
-  c+=hue*line(radius-rr,.017)*gate*(.025+energy*.25)*power;
+  c+=hue*line(radius-rr,.017)*gate*(.045+energy*.48)*power;
+  c+=hue*line(radius-rr,.037)*gate*(.009+energy*.14)*power;
  }
  // 128 radial spectral rays: actual frequency bins determine extension.
  float sectors=128.;
@@ -68,6 +71,7 @@ void main(){
  vec3 hue=mix(cyan,magenta,.5+.5*sin(a*1.5+.8));
  c+=hue*ray*extent*(.16+e*2.4)*power;
  c+=hue*ray*line(radius-start-height,.007)*(e*.85)*power;
+ c+=hue*ray*extent*(.025+e*.32)*line(radius-start-height*.5,.055)*power;
  // Accent arclets made of thin sharp highlights with a restrained bloom skirt.
  for(int i=0;i<8;i++){
   float f=float(i);
@@ -79,6 +83,17 @@ void main(){
   float halo=line(radius-rr,.014)*mask*.23;
   c+=mix(magenta,cyan,mod(f,3.)/2.)*(glow+halo)*(.17+mid+beat*.75)*power;
  }
+ // Spectral filaments: thin layered silk driven by midrange, voice and high transients.
+ for(int j=0;j<9;j++){
+  float f=float(j);
+  float freq=band(mod(f*3.+floor(angular*18.),32.));
+  float y0=(f-4.)*.008;
+  float wave=.048*sin(uv.x*(8.+f*.42)+u_time*.32*u_playing+f*.42)*(mid*.9+.10)+.019*sin(uv.x*19.+f*.85+hi*3.)*(hi+.1);
+  float yy=uv.y-y0-wave;
+  float ribbon=line(yy,.0013)*(mid*.55+freq*.7+.045)+line(yy,.008)*(.04+freq*.12);
+  float fade=smoothstep(.17,.46,abs(uv.x))*(1.-smoothstep(.83,1.2,abs(uv.x)));
+  c+=mix(cyan,magenta,f/8.)*ribbon*fade*power*.85;
+ }
  // Wave ribbons emerge from the music, with non-periodic variations from 32 FFT bins.
  for(int j=0;j<3;j++){
   float f=float(j);
@@ -88,16 +103,28 @@ void main(){
   float fade=smoothstep(.21,.48,abs(uv.x));
   c+=mix(cyan,magenta,f/2.)*ribbon*fade*power*.7;
  }
+ // Audio transients illuminate radial streaks; no event means no burst.
+ for(int j=0;j<18;j++){
+  float f=float(j),angle=f*2.399963+u_time*.013*u_playing;
+  float angDist=abs(atan(sin(a-angle),cos(a-angle)));
+  float bandLevel=band(mod(f*7.,32.));
+  float flare=line(angDist,.003+.004*bandLevel)*smoothstep(.22,.36,radius)*(1.-smoothstep(.66,.89,radius));
+  c+=mix(cyan,magenta,mod(f,3.)/2.)*flare*(bandLevel*bandLevel*.62+beat*.18)*power;
+ }
  // Sparse star dust reacts to treble rather than continuously moving.
  vec2 cell=floor(uv*52.);
  float rnd=hash(cell.x*73.+cell.y*19.);
  vec2 grid=fract(uv*52.)-.5;
  float spark=line(length(grid),.05)*(step(.993,rnd));
  c+=mix(cyan,magenta,rnd)*spark*(.07+hi*1.8)*power;
- float vignette=1.-smoothstep(.44,1.05,radius);
+ float vignette=1.-smoothstep(.53,1.12,radius);
  c*=vignette;
  // Filmic soft-knee highlight, preserve dark center.
- c=1.-exp(-c*1.25);
+ // Filmic bloom approximation: energy-dependent low-frequency halo stays behind crisp cores.
+ float bloom=(.07+bass*.30+beat*.48)*power;
+ c+=purple*bloom*exp(-pow((radius-.36)/.19,2.))*.21;
+ c+=cyan*(hi*.16+mid*.035)*exp(-pow((radius-.48)/.12,2.))*power;
+ c=1.-exp(-c*1.18);
  fragColor=vec4(c,1.);
 }`;
 const compile=(gl,type,source)=>{const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)){const message=gl.getShaderInfoLog(shader);gl.deleteShader(shader);throw Error(message)}return shader};
