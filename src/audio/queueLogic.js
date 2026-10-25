@@ -11,3 +11,9 @@ export function previousIndex({length,index,history=[]}){
  return Math.max(0,index-1);
 }
 export function reordered(ids,source,target){const copy=[...ids];const from=copy.indexOf(source),to=copy.indexOf(target);if(from<0||to<0)return ids;copy.splice(from,1);copy.splice(to,0,source);return copy}
+
+export function shuffledQueue(ids,currentId,random=Math.random){
+ const remaining=ids.filter(id=>id!==currentId);
+ for(let i=remaining.length-1;i>0;i--){const j=Math.max(0,Math.min(i,Math.floor(random()*(i+1))));[remaining[i],remaining[j]]=[remaining[j],remaining[i]]}
+ return currentId&&ids.includes(currentId)?[currentId,...remaining]:remaining;
+}
