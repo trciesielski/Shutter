@@ -12,3 +12,20 @@ html,body,#root{max-width:100%;overflow-x:clip}
 .player-build-tag{display:none}
 @media(max-width:800px){.app-shell{padding-bottom:150px}}
 @media(max-width:510px){.hero{padding:29px 23px}.app-shell{padding-bottom:162px}}
+
+/* HERO MUSIC 01: understated layered glyphs, blended edges, no image card */
+.hero-music-art{position:absolute;inset:-22px -28px -42px 32%;pointer-events:none;z-index:0;overflow:hidden;opacity:.88;mask-image:linear-gradient(90deg,transparent 0%,#000 33%,#000 75%,transparent 100%),linear-gradient(0deg,transparent 0%,#000 22%,#000 80%,transparent 100%);mask-composite:intersect}
+.hero-content{z-index:2}
+.hero-glyph{position:absolute;stroke:currentColor;fill:none;stroke-width:1.05;color:#a99bea;filter:drop-shadow(0 6px 20px rgba(147,113,230,.24))}
+.glyph-playlist{width:155px;height:155px;left:28%;top:9%;opacity:.19;transform:rotate(-16deg)}
+.glyph-note{width:100px;height:100px;left:67%;top:36%;opacity:.15;transform:rotate(14deg);filter:blur(1px)}
+.glyph-headphones{width:185px;height:185px;left:49%;top:8%;opacity:.08;transform:rotate(19deg);filter:blur(4px)}
+.glyph-album{width:132px;height:132px;left:48%;top:59%;opacity:.14;transform:rotate(-24deg)}
+.glyph-heart{width:61px;height:61px;left:15%;top:66%;opacity:.12;transform:rotate(17deg)}
+.glyph-wave{width:86px;height:86px;left:78%;top:69%;opacity:.14;transform:rotate(-9deg)}
+.glyph-search{width:70px;height:70px;left:8%;top:28%;opacity:.09;filter:blur(3px)}
+.glyph-library{width:82px;height:82px;left:76%;top:8%;opacity:.13;transform:rotate(10deg)}
+:root[data-theme=light] .hero-glyph{color:#8068c9}
+@media(max-width:800px){.hero-music-art{inset:-12px -20px -30px 27%;opacity:.75}.glyph-headphones,.glyph-search{display:none}.glyph-playlist{left:27%;top:5%}.glyph-album{left:39%;top:63%}}
+@media(max-width:510px){.hero-music-art{inset:-8px -17px -23px 38%;opacity:.55}.hero-glyph{stroke-width:1}.glyph-playlist{width:116px;height:116px;left:14%;top:5%;opacity:.13}.glyph-note{width:72px;height:72px;left:65%;top:32%}.glyph-album{width:110px;height:110px;left:40%;top:63%;opacity:.10}.glyph-heart,.glyph-library{display:none}.glyph-wave{left:78%;top:76%}}
+@media(prefers-reduced-transparency:reduce){.hero-music-art{opacity:.32}}
