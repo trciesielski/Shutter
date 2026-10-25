@@ -30,13 +30,16 @@ html,body,#root{max-width:100%;overflow-x:clip}
 @media(max-width:510px){.hero-music-art{inset:-8px -17px -23px 38%;opacity:.55}.hero-glyph{stroke-width:1}.glyph-playlist{width:116px;height:116px;left:14%;top:5%;opacity:.13}.glyph-note{width:72px;height:72px;left:65%;top:32%}.glyph-album{width:110px;height:110px;left:40%;top:63%;opacity:.10}.glyph-heart,.glyph-library{display:none}.glyph-wave{left:78%;top:76%}}
 @media(prefers-reduced-transparency:reduce){.hero-music-art{opacity:.32}}
 
-/* PLAYLIST COVERS 02 — fade all four edges, not just corners.
-   Fades start near the center-to-edge boundary and end at the actual border. */
+/* PLAYLIST COVERS 03 — square-shaped fade on all four sides */
 .album-card .album-cover{
  border-radius:0;
- -webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 52%,rgba(0,0,0,.88) 64%,rgba(0,0,0,.48) 81%,transparent 100%);
- mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 52%,rgba(0,0,0,.88) 64%,rgba(0,0,0,.48) 81%,transparent 100%);
- -webkit-mask-size:100% 100%;
- mask-size:100% 100%;
+ -webkit-mask-image:
+   linear-gradient(to right,transparent 0%,rgba(0,0,0,.35) 7%,#000 21%,#000 79%,rgba(0,0,0,.35) 93%,transparent 100%),
+   linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.35) 7%,#000 21%,#000 79%,rgba(0,0,0,.35) 93%,transparent 100%);
+ mask-image:
+   linear-gradient(to right,transparent 0%,rgba(0,0,0,.35) 7%,#000 21%,#000 79%,rgba(0,0,0,.35) 93%,transparent 100%),
+   linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.35) 7%,#000 21%,#000 79%,rgba(0,0,0,.35) 93%,transparent 100%);
+ -webkit-mask-composite:source-in;
+ mask-composite:intersect;
 }
 .album-card:hover .album-cover{transform:translateY(-2px)}
