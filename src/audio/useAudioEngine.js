@@ -39,7 +39,7 @@ export function useAudioEngine(){
     if(f&&Number.isFinite(a.currentTime)&&Math.floor(a.currentTime)%5===0){
       try{localStorage.setItem(positionKey,JSON.stringify({id:f.id,time:a.currentTime}))}catch{}
     }
-    if(info.transition===0&&info.repeat!=='one'&&Number.isFinite(remaining)&&remaining>0&&remaining<20&&!busy.current){
+    if(info.repeat!=='one'&&Number.isFinite(remaining)&&remaining>0&&remaining<20&&!busy.current){
       const at=neighbor(true),upcoming=info.files[at],standby=decks.current[1-i];
       if(upcoming&&standby&&standby.src!==upcoming.url){standby.src=upcoming.url;standby.preload='auto';standby.load()}
     }
@@ -73,6 +73,7 @@ export function useAudioEngine(){
   const cross=Boolean(withFade&&info.transition>0&&!old.paused&&old.src&&at!==info.index);
   const standby=decks.current[1-currentDeck];
   const preloaded=Boolean(!cross&&old.ended&&standby?.src===f.url);
+  const standbyReady=Boolean((cross||preloaded)&&standby?.src===f.url);
   const targetDeck=cross||preloaded?1-currentDeck:currentDeck,target=decks.current[targetDeck];
   if(cross)busy.current=true;
   setError('');
@@ -80,7 +81,7 @@ export function useAudioEngine(){
    const ok=await eq.activate();
    if(!ok){setError('Przetwarzanie EQ jest niedostępne na tym urządzeniu. Spróbuj innej przeglądarki.');busy.current=false;return}
    if(!cross){clearTimeout(fadeTimer.current);if(!preloaded)standby.pause();eq.setDeck(targetDeck);old.pause()}
-   if(!preloaded){target.src=f.url;target.load()}target.volume=volume;
+   if(!standbyReady){target.src=f.url;target.load()}target.volume=volume;
    if(cross){eq.setDeck(currentDeck)}
    // Playback starts from the user's interaction; both decks share the same EQ graph.
    await target.play();
