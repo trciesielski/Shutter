@@ -6,6 +6,7 @@ const clamp=(v,min,max)=>Math.max(min,Math.min(max,Number(v)||0));
 function stored(){try{const a=JSON.parse(localStorage.getItem(KEY)||'{}');return {enabled:a.enabled??true,gains:Array.isArray(a.gains)&&a.gains.length===10?a.gains.map(v=>clamp(v,-12,12)):[...PRESETS.Flat],preamp:clamp(a.preamp??-3,-12,6),preset:a.preset||'Flat',custom:a.custom&&typeof a.custom==='object'?a.custom:{}}}catch{return {enabled:true,gains:[...PRESETS.Flat],preamp:-3,preset:'Flat',custom:{}}}}
 export function useEqualizer(media){
  const [settings,setSettings]=useState(stored),[ready,setReady]=useState(false);
+ const [compare,setCompare]=useState(false),[autoProtect,setAutoProtect]=useState(true);
  const graph=useRef(null),[bins,setBins]=useState(Array(32).fill(0));
  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(settings))}catch{}},[settings]);
  const initialize=async()=>{
@@ -23,14 +24,16 @@ export function useEqualizer(media){
   }catch(e){console.warn('Equalizer unavailable:',e);return null}
  };
  useEffect(()=>{const g=graph.current;if(!g)return;const t=g.context.currentTime;
-  g.preamp.gain.setTargetAtTime(settings.enabled?Math.pow(10,settings.preamp/20):1,t,.015);
-  g.filters.forEach((f,i)=>f.gain.setTargetAtTime(settings.enabled?settings.gains[i]:0,t,.015));
- },[settings]);
- const activate=async()=>{const g=await initialize();if(g){if(g.context.state==='suspended')await g.context.resume();const t=g.context.currentTime;g.preamp.gain.setValueAtTime(settings.enabled?Math.pow(10,settings.preamp/20):1,t);g.filters.forEach((f,i)=>f.gain.setValueAtTime(settings.enabled?settings.gains[i]:0,t))}return !!g};
+  const boost=Math.max(0,...settings.gains),effective=autoProtect?Math.min(settings.preamp,-boost):settings.preamp;
+  const on=settings.enabled&&!compare;
+  g.preamp.gain.setTargetAtTime(on?Math.pow(10,effective/20):1,t,.015);
+  g.filters.forEach((f,i)=>f.gain.setTargetAtTime(on?settings.gains[i]:0,t,.015));
+ },[settings,compare,autoProtect]);
+ const activate=async()=>{const g=await initialize();if(g){if(g.context.state==='suspended')await g.context.resume();const t=g.context.currentTime;const boost=Math.max(0,...settings.gains);const effective=autoProtect?Math.min(settings.preamp,-boost):settings.preamp;const on=settings.enabled&&!compare;g.preamp.gain.setValueAtTime(on?Math.pow(10,effective/20):1,t);g.filters.forEach((f,i)=>f.gain.setValueAtTime(on?settings.gains[i]:0,t))}return !!g};
  useEffect(()=>{let frame=0;let last=0;const data=new Uint8Array(512);const render=time=>{const g=graph.current;if(g&&time-last>65){g.analyser.getByteFrequencyData(data);setBins(Array.from({length:32},(_,i)=>Math.round(data[Math.min(511,Math.floor(i*i*.46))]/255*100)));last=time}frame=requestAnimationFrame(render)};frame=requestAnimationFrame(render);return()=>{cancelAnimationFrame(frame);const g=graph.current;if(g){g.context.close().catch(()=>{});graph.current=null}}},[]);
  const setBand=(i,value)=>setSettings(s=>({...s,gains:s.gains.map((v,j)=>i===j?clamp(value,-12,12):v),preset:'Custom'}));
  const setPreamp=value=>setSettings(s=>({...s,preamp:clamp(value,-12,6)}));
  const applyPreset=name=>setSettings(s=>({...s,gains:[...(s.custom[name]||PRESETS[name]||PRESETS.Flat)],preset:name}));
  const savePreset=name=>{const clean=name.trim().slice(0,32);if(clean)setSettings(s=>({...s,custom:{...s.custom,[clean]:[...s.gains]},preset:clean}))};
- return {settings,bins,ready,activate,setBand,setPreamp,applyPreset,savePreset,toggle:()=>setSettings(s=>({...s,enabled:!s.enabled}))};
+ return {settings,bins,ready,activate,setBand,setPreamp,applyPreset,savePreset,compare,setCompare,autoProtect,setAutoProtect,toggle:()=>setSettings(s=>({...s,enabled:!s.enabled}))};
 }
