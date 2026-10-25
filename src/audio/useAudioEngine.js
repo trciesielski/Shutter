@@ -29,6 +29,18 @@ export function useAudioEngine(){
   if(a.ended)a.currentTime=0;
   try{setError('');await a.play()}catch(e){setState('paused');setError('Przeglądarka zablokowała odtwarzanie: '+e.message)}
  };
+ useEffect(()=>{
+  if(!('mediaSession' in navigator)||!files.length)return;
+  const f=files[index];if(!f)return;
+  navigator.mediaSession.metadata=new MediaMetadata({title:f.title,artist:f.artist,album:f.album});
+  navigator.mediaSession.playbackState=state==='playing'?'playing':'paused';
+  const handlers={play:()=>media.current?.play().catch(()=>{}),pause:()=>media.current?.pause(),
+   previoustrack:()=>select((index-1+files.length)%files.length),
+   nexttrack:()=>select((index+1)%files.length),
+   seekto:({seekTime})=>{if(media.current&&Number.isFinite(seekTime))media.current.currentTime=seekTime}};
+  Object.entries(handlers).forEach(([key,fn])=>{try{navigator.mediaSession.setActionHandler(key,fn)}catch{}});
+  return()=>Object.keys(handlers).forEach(key=>{try{navigator.mediaSession.setActionHandler(key,null)}catch{}});
+ },[files,index,state]);
  const seek=p=>{const a=media.current;if(a&&Number.isFinite(a.duration)){a.currentTime=Math.min(a.duration,Math.max(0,a.duration*p/100));setSeconds(a.currentTime)}};
  const setGain=v=>{const n=Math.max(0,Math.min(1,v));setVolume(n);if(media.current)media.current.volume=n};
  return {files,index,state,seconds,duration,volume,error,importFiles,select,toggle,seek,setGain,
