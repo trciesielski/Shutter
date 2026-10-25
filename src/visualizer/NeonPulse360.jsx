@@ -14,71 +14,72 @@ uniform vec2 u_resolution;
 uniform float u_time,u_intensity,u_playing,u_bass,u_mid,u_high,u_beat,u_flux,u_centroid,u_voice,u_voiceAttack;
 uniform float u_bins[32],u_sustain[12],u_transient[12];
 #define PI 3.14159265359
-float gauss(float d,float w){float x=d/max(w,.0001);return exp(-x*x);}
-float wrapAngle(float a){return fract(a/(2.*PI));}
-float band(float x){return u_bins[int(mod(floor(x),32.))];}
+float glow(float d,float width){float x=d/max(width,.00001);return exp(-x*x);}
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 void main(){
- vec2 uv=(gl_FragCoord.xy-.5*u_resolution)/max(1.,min(u_resolution.x,u_resolution.y));
- float r=length(uv),a=atan(uv.y,uv.x),t=u_time*u_playing;
- float amp=u_intensity,beat=u_beat,sub=u_sustain[0],kick=u_transient[2],voice=u_voice;
- vec3 pink=vec3(1.,.06,.38),hot=vec3(1.,.34,.18),gold=vec3(1.,.69,.35);
- vec3 violet=vec3(.51,.15,1.),blue=vec3(.075,.30,1.),cyan=vec3(.13,.79,1.);
- vec3 c=vec3(.012,.005,.048);
- // Rich atmospheric bloom framing the portal, with a visible luminous heart.
- c+=violet*(.12+.19*u_mid)*exp(-r*3.4);
- c+=blue*(.085+.12*u_high)*exp(-length(uv-vec2(-.30,-.25))*3.6);
- c+=pink*(.05+.20*beat)*exp(-length(uv-vec2(.3,.18))*4.);
- float heart=gauss(r,.077+beat*.015);
- c+=mix(pink,vec3(1.,.95,.77),exp(-r*35.))*heart*(1.3+beat*2.2);
- c+=pink*gauss(r,.16)*( .24+.30*voice);
- c+=violet*gauss(r-.12,.055)*(.13+.23*u_voiceAttack);
- // Multi-layer independent illuminated arcs. Every layer has its own 12-band movement.
+ // Normalized using viewport width/height separately so the circular artwork stays centered.
+ vec2 p=(gl_FragCoord.xy-u_resolution*.5)/min(u_resolution.x,u_resolution.y);
+ // 0.73 keeps outer arcs within the available frame, especially on Android.
+ p*=1.26;
+ float r=length(p),a=atan(p.y,p.x);
+ float t=u_time*u_playing,amp=u_intensity,beat=u_beat;
+ vec3 pink=vec3(1.,.04,.39),orange=vec3(1.,.30,.065),gold=vec3(1.,.61,.18);
+ vec3 violet=vec3(.45,.12,1.),blue=vec3(.045,.24,1.),cyan=vec3(.025,.73,1.);
+ vec3 color=vec3(.008,.005,.036);
+ // Dark negative space between the arc tracks; keep atmospheric glow restrained.
+ color+=violet*glow(r-.36,.42)*(.038+.035*u_mid);
+ color+=blue*glow(length(p-vec2(-.28,-.19)),.39)*(.028+.045*u_high);
+ // Radiant center without dark hole, but small enough to preserve ring definition.
+ color+=pink*glow(r,.093)*(.27+.23*u_voice);
+ color+=violet*glow(r,.065)*(.35+.28*beat);
+ color+=vec3(1.,.76,.58)*glow(r,.024)*(.65+.8*beat);
+ color+=vec3(1.,.94,.82)*glow(r,.009)*(.5+.32*beat);
+ // Short, separated arc tracks, with individual audio control and alternating chroma.
  for(int i=0;i<12;i++){
   float k=float(i);
-  float sustain=u_sustain[i],attack=u_transient[i];
-  float rad=.128+k*.033+(beat*.016+sustain*.012)*(1.-k/16.);
-  float angle=a+t*(mod(k,2.)<1.?1.:-1.)*(.10+.018*k)+k*1.41;
-  float sector=fract(angle/(2.*PI)*(1.8+mod(k,4.)*.52));
-  float cut=smoothstep(.055,.16,sector)*(1.-smoothstep(.79,.96,sector));
-  float interruptions=smoothstep(.11,.25,sin(a*(4.+mod(k,3.)*2.)+k*1.43)*.5+.5);
-  float mask=mix(cut,cut*interruptions,.21);
-  float wobble=.0035*sin(a*(5.+mod(k,3.))+t*.45+k)*(.28+voice*1.9);
-  float d=r-rad-wobble;
-  float bright=(.32+1.15*sustain+1.9*attack+.6*beat)*mask*amp;
-  vec3 hue=mix(pink,hot,smoothstep(.1,.9,fract(k*.29)));
-  hue=mix(hue,cyan,step(8.,k)*.36);
-  c+=hue*gauss(d,.0028+.002*sustain)*bright*2.8;
-  c+=hue*gauss(d,.013)*bright*.61;
-  c+=mix(violet,hue,.62)*gauss(d,.040)*bright*.16;
-  float tip=gauss(sector-.16,.028)+gauss(sector-.79,.025);
-  c+=vec3(1.,.94,.81)*gauss(d,.007)*tip*(.35+attack*2.2)*amp;
+  float sustain=u_sustain[i],hit=u_transient[i];
+  float rad=.13+k*.027+beat*.008*(1.-k/15.);
+  float spin=t*(mod(k,2.)<1.?1.:-1.)*(.12+.012*k);
+  float sector=fract((a+spin+k*.77)/(2.*PI));
+  // Per-track arc 45-115 degrees, leaving substantial true darkness around it.
+  float start=fract(k*.183+.06);
+  float dArc=fract(sector-start+1.);
+  float lengthArc=.15+.12*fract(k*.29);
+  float cut=smoothstep(.0,.022,dArc)*(1.-smoothstep(lengthArc-.022,lengthArc,dArc));
+  // Occasional second, thinner segment on selected rings.
+  float second=step(0.5,fract(k*.37))*smoothstep(.0,.018,fract(dArc+.49))*(1.-smoothstep(.075,.095,fract(dArc+.49)))*.47;
+  float mask=max(cut,second);
+  float displacement=.0025*sin(a*5.+t*.25+k)*(.2+u_voice*.75);
+  float d=r-rad-displacement;
+  vec3 hue=mod(k,5.)<1.?cyan:mod(k,5.)<2.?violet:mod(k,5.)<3.?pink:mod(k,5.)<4.?orange:gold;
+  float strength=mask*(.33+.65*sustain+.9*hit+.26*beat)*amp;
+  color+=hue*glow(d,.0031)*strength*2.1;
+  color+=hue*glow(d,.012)*strength*.29;
+  color+=hue*glow(d,.026)*strength*.055;
+  float tip=glow(dArc-.022,.012)+glow(dArc-lengthArc+.02,.014);
+  color+=vec3(1.,.85,.72)*glow(d,.004)*tip*(.24+.55*hit)*amp;
  }
- // Four bold asymmetric outer arcs, wide glow and blazing hot cores.
- for(int j=0;j<4;j++){
-  float k=float(j),radius=.42+k*.045+beat*.019;
-  float turn=a+t*(mod(k,2.)<1.?1.:-1.)*(.13+k*.05)+k*1.9;
-  float phase=fract(turn/(2.*PI));
-  float segment=smoothstep(.035,.115,phase)*(1.-smoothstep(.49+.07*mod(k,2.),.63+.07*mod(k,2.),phase));
-  float d=r-radius;
-  float strength=(.48+u_sustain[j*3]*.6+u_transient[j*3]*1.6+beat*.62)*amp*segment;
-  vec3 hue=k<2.?mix(hot,pink,k*.7):mix(violet,blue,(k-2.)*.55);
-  c+=hue*gauss(d,.006)*strength*3.6;
-  c+=hue*gauss(d,.025)*strength*.85;
-  c+=hue*gauss(d,.06)*strength*.20;
-  c+=vec3(1.,.91,.78)*gauss(d,.003)*strength*1.7;
+ // A few deliberately broad asymmetric signature curves in warm, magenta, and blue.
+ for(int i=0;i<4;i++){
+  float k=float(i),rad=.455+k*.041+beat*.008;
+  float turn=fract((a+t*(mod(k,2.)<1.?1.:-1.)*(.09+k*.017)+k*1.64)/(2.*PI));
+  float portion=fract(turn+(.17*k));
+  float mask=smoothstep(.0,.025,portion)*(1.-smoothstep(.20+.035*mod(k,2.),.24+.035*mod(k,2.),portion));
+  float d=r-rad;
+  vec3 hue=i==0?orange:i==1?pink:i==2?cyan:blue;
+  float strength=mask*(.56+.53*u_sustain[i*3]+.85*u_transient[i*3]+.28*beat)*amp;
+  color+=hue*glow(d,.005)*strength*2.0;
+  color+=hue*glow(d,.014)*strength*.30;
+  color+=hue*glow(d,.034)*strength*.05;
+  color+=vec3(1.,.79,.65)*glow(d,.0025)*strength*.65;
  }
- // Moving luminous dust; sparkle rate follows high frequencies rather than clock alone.
- vec2 cell=floor(uv*41.);
- float seed=fract(sin(dot(cell,vec2(127.1,311.7)))*43758.5453);
- vec2 local=fract(uv*41.)-.5;
- float star=gauss(length(local),.11)*step(.976,seed);
- float shimmer=.14+u_sustain[10]*1.1+u_transient[11]*2.2+u_flux*.6;
- c+=mix(cyan,pink,seed)*star*shimmer*amp;
- // Glossy bloom and gentle vignette; bright center is intentionally NOT a dark hole.
- c+=violet*gauss(r-.31,.21)*(.06+.10*u_mid);
- c*=1.-smoothstep(.68,1.10,r)*.78;
- c=1.-exp(-c*1.25);
- fragColor=vec4(c,1.);
+ // Small isolated musical highlights; spectral treble affects twinkle.
+ vec2 cell=floor(p*46.);
+ float rnd=hash(cell),star=glow(length(fract(p*46.)-.5),.10)*step(.984,rnd);
+ color+=mix(cyan,pink,rnd)*star*(.12+.58*u_sustain[10]+.95*u_transient[11])*.72*amp;
+ // Exponential tonemapping prevents broad white smears.
+ color=1.-exp(-color*1.09);
+ fragColor=vec4(color,1.);
 }`;
 const compile=(gl,type,source)=>{const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)){const message=gl.getShaderInfoLog(shader);gl.deleteShader(shader);throw Error(message)}return shader};
 export default function NeonPulse360({bins=[],playing=false,intensity=65,onUnavailable,background=false,reduced=false}){
