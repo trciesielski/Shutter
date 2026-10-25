@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {readTracks,storeTrack,removeTrack} from './libraryStore.js';
 import {extractMetadata} from './musicMetadata.js';
-import {nextIndex,previousIndex,reordered} from './queueLogic.js';
+import {nextIndex,previousIndex,reordered,shuffledQueue} from './queueLogic.js';
 import {recordListen,readHistory,historyStats,clearHistory} from './listeningHistory.js';
 import {useEqualizer} from './useEqualizer.js';
 
@@ -141,9 +141,7 @@ export function useAudioEngine(){
   if(!shuffle){
    unshuffledOrder.current=[...queueIds];
    const now=latest.current.files[index]?.id;
-   const others=queueIds.filter(id=>id!==now);
-   for(let i=others.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[others[i],others[j]]=[others[j],others[i]]}
-   setQueueIds(now?[now,...others]:others);
+   setQueueIds(shuffledQueue(queueIds,now));
    setShuffle(true);
   }else{
    const original=unshuffledOrder.current||queueIds;
