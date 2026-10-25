@@ -17,7 +17,7 @@ export default function EqualizerPanel({eq}){
      <span>{freq>=1000?freq/1000+'k':freq}</span>
    </div>)}</div>
    <div className="eq-preamp"><label htmlFor="eq-preamp">Preamp <strong>{settings.preamp>0?'+':''}{settings.preamp.toFixed(1)} dB</strong></label><input id="eq-preamp" type="range" min="-12" max="6" step=".5" value={settings.preamp} onChange={e=>setPreamp(Number(e.target.value))} disabled={!settings.enabled}/><small>Zmniejsz preamp przy podbiciu wielu pasm, aby ograniczyć przesterowanie.</small></div>
-   <div className="eq-save"><input value={name} onChange={e=>setName(e.target.value)} placeholder="Nazwa własnego presetu" maxLength={32} aria-label="Nazwa presetu"/><button disabled={!name.trim()} onClick={()=>{savePreset(name);setName('')}}>Zapisz preset</button></div>
+   <div className="eq-save"><input value={name} onChange={e=>setName(e.target.value)} placeholder="Własna nazwa" maxLength={32} aria-label="Nazwa presetu"/><button disabled={!name.trim()} onClick={()=>{savePreset(name);setName('')}}>Zapisz preset</button></div>
   </div><p className="eq-disclaimer">Korektor działa na dźwięku z lokalnych plików odtwarzanych przez Shutter. Nie modyfikuje dźwięku całego systemu. Analizator pokazuje sygnał po filtrach, a nie animację demonstracyjną.</p>
  </section>
 }
