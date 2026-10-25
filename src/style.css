@@ -210,3 +210,40 @@
 @media(prefers-reduced-transparency:reduce){
  .player-bar{background:var(--surface)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 }
+
+/* HERO 06 — ambient hero, seamlessly dissolving into the page background */
+.hero{
+ border:0!important;
+ border-radius:0!important;
+ box-shadow:none!important;
+ overflow:visible;
+ background:transparent!important;
+ isolation:isolate;
+}
+.hero::before{
+ content:"";position:absolute;z-index:-1;
+ inset:-24px -28px -44px;
+ pointer-events:none;
+ background:
+  radial-gradient(ellipse 72% 65% at 75% 40%,rgba(114,85,221,.28),transparent 90%),
+  radial-gradient(ellipse 65% 70% at 20% 38%,rgba(89,69,171,.17),transparent 92%);
+ -webkit-mask-image:radial-gradient(ellipse 78% 76% at 52% 43%,#000 42%,transparent 100%);
+ mask-image:radial-gradient(ellipse 78% 76% at 52% 43%,#000 42%,transparent 100%);
+}
+.hero-art{opacity:.38}
+.hero-glow{opacity:.24}
+:root[data-theme=light] .hero{color:var(--text)}
+:root[data-theme=light] .hero h1{color:var(--text)}
+:root[data-theme=light] .hero p{color:var(--muted)}
+:root[data-theme=light] .hero h1 em{color:#8062e8}
+:root[data-theme=light] .hero::before{
+ background:radial-gradient(ellipse 75% 65% at 68% 40%,rgba(153,130,237,.18),transparent 95%),radial-gradient(ellipse 65% 68% at 17% 40%,rgba(189,172,242,.16),transparent 92%);
+}
+@media(max-width:800px){
+ .hero{padding:35px!important}
+ .hero::before{inset:-15px -20px -36px}
+}
+@media(max-width:510px){
+ .hero{padding:29px 23px!important}
+ .hero::before{inset:-12px -20px -27px}
+}
