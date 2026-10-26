@@ -119,3 +119,5 @@ html.shutter-visual-focus .music-visualizer .visualizer-head-actions{gap:5px}
 /* Minimal: 32-band neon spectrum in both inline and full-screen scenes. */
 .music-visualizer .visualizer-scene canvas.minimal-neon-spectrum-canvas,.visualizer-scene-backdrop canvas.minimal-neon-spectrum-canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .music-visualizer.mode-minimal .visualizer-vignette{opacity:.14}
+
+.music-visualizer .visualizer-scene canvas.minimal-neon-webgl-canvas,.visualizer-scene-backdrop canvas.minimal-neon-webgl-canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
