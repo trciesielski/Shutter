@@ -1,0 +1,13 @@
+/* Responsive playlist cards: never stretch one playlist cover across the desktop viewport. */
+.local-playlists{min-width:0}
+.local-playlists .playlist-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,220px));justify-content:start;align-items:start;gap:22px;max-width:100%;min-width:0}
+.local-playlists .playlist-tile{display:flex;flex-direction:column;align-items:stretch;text-align:left;min-width:0;max-width:220px;width:100%;padding:0}
+.local-playlists .playlist-tile-art{display:grid;place-items:center;position:relative;aspect-ratio:1/1;width:100%;height:auto;max-width:220px;min-height:0;overflow:hidden}
+.local-playlists .playlist-tile strong,.local-playlists .playlist-tile small{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:520px){.local-playlists .playlist-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.local-playlists .playlist-tile{max-width:100%}.local-playlists .playlist-tile-art{max-width:100%}}
+/* The fixed glass player overlays the viewport. Reserve actual scrollable space
+   after the final card in every route; include iOS/Android safe-area insets. */
+.page-content{padding-bottom:max(180px,calc(155px + env(safe-area-inset-bottom,0px)))!important}
+.app-shell{padding-bottom:max(135px,calc(120px + env(safe-area-inset-bottom,0px)))}
+.local-playlists .playlist-detail-scroll{scroll-padding-bottom:28px;padding-bottom:32px}
+@media(max-width:800px){.page-content{padding-bottom:max(205px,calc(185px + env(safe-area-inset-bottom,0px)))!important}.app-shell{padding-bottom:max(175px,calc(155px + env(safe-area-inset-bottom,0px)))}}
