@@ -8,6 +8,7 @@ import NeonPulse360 from './NeonPulse360.jsx';
 import SonicWaves from './SonicWaves.jsx';
 import SonicLines from './SonicLines.jsx';
 import MinimalNeonSpectrum from './MinimalNeonSpectrum.jsx';
+import MinimalNeonWebGL from './MinimalNeonWebGL.jsx';
 import './visualizer.css';
 
 const KEY='shutter-visualizer-v1';
@@ -75,7 +76,7 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true,signa
   return()=>{live=false;cancelAnimationFrame(frame.current)};
  },[mode,playing,reduced,maximized,diagnostic]);
  const scene=<div className={'visualizer-scene'+(maximized?' visualizer-scene-backdrop':'')}>
-  {mode==='minimal'?<MinimalNeonSpectrum bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized}/>:mode==='sonic'?<SonicLines bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized}/>:mode==='neon-waves'?<SonicLines bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized}/>:mode==='waves'&&!webglFailed?<SonicWaves bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>:mode==='shards'&&!webglFailed?<NeonPulse360 bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>:neon?<NeonSpectrum bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>:<canvas ref={canvas} aria-hidden="true"/>}
+  {mode==='minimal'?(webglFailed?<MinimalNeonSpectrum bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized}/>:<MinimalNeonWebGL bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>):mode==='sonic'?<SonicLines bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized}/>:mode==='neon-waves'?<SonicLines bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized}/>:mode==='waves'&&!webglFailed?<SonicWaves bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>:mode==='shards'&&!webglFailed?<NeonPulse360 bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>:neon?<NeonSpectrum bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>:<canvas ref={canvas} aria-hidden="true"/>}
   {mode==='cover'&&<div className="visualizer-cover">{coverUrl?<img src={coverUrl} alt="Okładka aktualnego utworu"/>:<div className="visualizer-fallback" aria-hidden="true"><strong>♪</strong></div>}</div>}
   <div className="visualizer-vignette"/>
  </div>;
