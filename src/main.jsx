@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { House, Library, ListMusic, Search, Settings, CarFront, Music2, Heart, Play, Pause, SkipBack, SkipForward, Shuffle, Repeat2, Volume2, Moon, Sun, Monitor, ChevronRight, Headphones, Disc3, Plus, Menu, X, Compass, ArrowUpRight, Laptop, Clock3 } from 'lucide-react';
 import './style.css';
+import './audio/SidebarScroll.css';
 import {useGlassLook} from './glass/useGlassLook.js';
 import PlayerGlass from './glass/PlayerGlass.jsx';
 import MusicVisualizer from './visualizer/MusicVisualizer.jsx';
