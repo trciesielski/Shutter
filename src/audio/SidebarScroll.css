@@ -1,0 +1,7 @@
+/* Sidebar: fixed brand + footer, only navigation scrolls. */
+.sidebar{height:100dvh;max-height:100dvh;top:0;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.sidebar>.brand{flex:0 0 auto;margin:0}
+.sidebar>.sidebar-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line) transparent;padding-bottom:16px}
+.sidebar>.sidebar-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.sidebar>.sidebar-bottom{flex:0 0 auto;margin-top:0}
+@media(max-width:800px){.sidebar{height:100dvh;max-height:100dvh;top:0;bottom:0}.sidebar>.sidebar-scroll{min-height:0}.sidebar>.sidebar-bottom{padding-bottom:calc(17px + env(safe-area-inset-bottom,0px))}}
