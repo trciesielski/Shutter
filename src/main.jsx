@@ -51,8 +51,10 @@ function App(){
  return <div className="app-shell"><svg aria-hidden="true" width="0" height="0" style={{position:"absolute",pointerEvents:"none"}}><defs><filter id="shutter-lens" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.016 0.035" numOctaves="2" seed="8" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G"/></filter></defs></svg>
  <aside className={`sidebar ${mobileMenu?'open':''}`}>
   <div className="brand"><div className="brand-mark"><span/><span/><span/><span/></div><span>shutter<span className="brand-dot">.</span></span><button className="menu-close" onClick={()=>setMobileMenu(false)} aria-label="Zamknij menu"><X size={19}/></button></div>
+  <div className="sidebar-scroll" role="region" aria-label="Menu nawigacyjne" tabIndex={0}>
   <div className="side-label">ODKRYWAJ</div><nav>{views.slice(0,4).map(({id,label,Icon})=><button key={id} className={view===id?'nav-active':''} onClick={()=>nav(id)}><Icon size={19}/><span>{label}</span>{view===id&&<span className="nav-dot"/>}</button>)}</nav>
   <div className="side-label section-gap">TWOJA PRZESTRZEŃ</div><nav>{views.slice(4).map(({id,label,Icon})=><button key={id} className={view===id?'nav-active':''} onClick={()=>nav(id)}><Icon size={19}/><span>{label}</span></button>)}</nav>
+  </div>
   <div className="sidebar-bottom"><div className="mini-disc"><Disc3 size={27}/></div><div><strong>Shutter Music</strong><small>Twój świat dźwięku</small></div></div>
  </aside>
  {mobileMenu&&<button className="shade" aria-label="Zamknij nawigację" onClick={()=>setMobileMenu(false)}/>}
