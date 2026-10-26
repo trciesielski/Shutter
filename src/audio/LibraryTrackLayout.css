@@ -12,3 +12,11 @@
 .library-track .library-track-actions .library-track-action svg{display:block;flex:none;width:14px;height:14px}
 .library-track .library-track-share-status{position:absolute;left:76px;bottom:0;z-index:5;font-size:10px;pointer-events:none}
 @media(max-width:420px){.library-track{grid-template-columns:60px minmax(0,1fr);column-gap:9px;min-height:72px}.library-track .library-track-main,.library-track .library-track-art{width:60px;height:60px}.library-track .library-track-details{height:60px;grid-template-rows:minmax(0,1fr) 27px;gap:2px}.library-track .library-track-actions{height:27px;gap:3px}.library-track .library-track-actions .library-track-action{width:26px;height:26px;min-width:26px;min-height:26px;flex-basis:26px}.library-track .library-track-share-status{left:69px}}
+
+/* Anchor the play/pause overlay to the actual artwork, not legacy row positioning. */
+.library-track .library-track-art .library-cover-play{
+ position:absolute;inset:0;top:50%;left:50%;right:auto;bottom:auto;
+ transform:translate(-50%,-50%);display:grid;place-items:center;
+ margin:0;padding:0;line-height:0;z-index:2;
+}
+.library-track .library-track-art .library-cover-play svg{display:block;flex:none}
