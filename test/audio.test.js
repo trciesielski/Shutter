@@ -194,3 +194,14 @@ test('Neon Waves PRO renders through the stable Canvas rather than the failing W
  assert.match(source,/mode==='neon-waves'\?\s*<SonicLines\b/);
  assert.ok(VISUAL_MODES.some(([id])=>id==='neon-waves'));
 });
+
+test('bottom player exposes flat Shutter Music transport controls',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const source=await readFile(new URL('../src/main.jsx',import.meta.url),'utf8');
+ const styles=await readFile(new URL('../src/glass/player-glass.css',import.meta.url),'utf8');
+ assert.match(source,/className="player-brand-lockup"/);
+ assert.match(source,/Shutter Music/);
+ assert.match(source,/aria-label="Losowo"/);
+ assert.match(source,/aria-label=\{audio\.repeat==='one'\?'Wyłącz powtarzanie 1':audio\.repeat==='all'\?'Wyłącz powtarzanie':'Włącz powtarzanie'\}/);
+ assert.match(styles,/\.shutter-glass \.player-bar-v5 \.player-controls button\.flat-transport-control[^}]*border-radius:0/);
+});

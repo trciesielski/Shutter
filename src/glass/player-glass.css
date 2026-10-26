@@ -569,3 +569,85 @@
  .library-track-menu-trigger{flex-basis:24px;width:24px}
  .library-track-share-status{right:4px;bottom:-24px;max-width:calc(100vw - 28px);overflow:hidden;text-overflow:ellipsis}
 }
+
+/* PLAYER V9 — Shutter Music lockup and flat transport matching the compact reference. */
+.shutter-glass .player-bar-v5 .player-identity{
+ display:flex!important;
+ align-items:center;
+ justify-content:flex-start!important;
+ gap:12px;
+ min-width:0;
+ text-align:left!important;
+ overflow:hidden;
+}
+.shutter-glass .player-bar-v5 .player-brand-lockup{
+ display:flex;
+ align-items:center;
+ gap:7px;
+ flex:0 0 auto;
+ color:var(--text);
+ white-space:nowrap;
+}
+.shutter-glass .player-bar-v5 .player-brand-lockup strong{
+ font-size:12px;
+ font-weight:800;
+ letter-spacing:.01em;
+}
+.shutter-glass .player-bar-v5 .player-brand-lockup svg{color:var(--muted);flex:0 0 auto}
+.shutter-glass .player-bar-v5 .player-identity .player-song-expand{
+ min-width:0;
+ flex:1 1 auto;
+ justify-content:flex-start!important;
+ text-align:left!important;
+ padding-left:0;
+}
+.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control:not(:disabled){
+ display:grid;
+ place-items:center;
+ flex:0 0 34px;
+ width:34px;
+ height:34px;
+ padding:0;
+ border:0;
+ border-radius:0;
+ background:transparent!important;
+ box-shadow:none!important;
+ color:var(--muted);
+}
+.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control:hover,
+.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control:focus-visible{
+ color:var(--text);
+ background:transparent!important;
+}
+.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control.is-selected{color:var(--text)}
+.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control.play-button:not(:disabled){
+ flex-basis:34px;
+ width:34px;
+ height:34px;
+ border-radius:0;
+ background:transparent!important;
+ box-shadow:none!important;
+ color:var(--text)!important;
+}
+.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control.play-button.is-playing:not(:disabled){
+ background:transparent!important;
+ box-shadow:none!important;
+ color:var(--text)!important;
+}
+.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control.play-button::before{display:none!important}
+.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control svg{width:19px;height:19px}
+.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control.play-button svg{width:21px;height:21px}
+@media(max-width:650px){
+ .shutter-glass .player-bar-v5 .player-brand-lockup strong{font-size:11px}
+ .shutter-glass .player-bar-v5 .player-controls{gap:12px}
+ .shutter-glass .player-bar-v5 .player-controls button.flat-transport-control:not(:disabled),
+ .shutter-glass .player-bar-v5 .player-controls button.flat-transport-control.play-button:not(:disabled){
+  flex-basis:30px;width:30px;height:30px;
+ }
+ .shutter-glass .player-bar-v5 .player-controls button.flat-transport-control svg{width:17px;height:17px}
+}
+@media(max-width:355px){
+ .shutter-glass .player-bar-v5 .player-controls{gap:7px}
+ .shutter-glass .player-bar-v5 .player-brand-lockup{gap:4px}
+ .shutter-glass .player-bar-v5 .player-brand-lockup strong{font-size:10px}
+}
