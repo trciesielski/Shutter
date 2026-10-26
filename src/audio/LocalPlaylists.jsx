@@ -1,4 +1,5 @@
 import React,{useState,useEffect} from 'react';
+import './PlaylistResponsive.css';
 import {Heart,Music2,Plus,Play,Pause,ChevronLeft,Trash2,X} from 'lucide-react';
 export default function LocalPlaylists({tracks,onPlay,onPlaylistPlay,onToggle,activeId,isPlaying,playlists}){
  const [name,setName]=useState(''),[opened,setOpened]=useState(null);
