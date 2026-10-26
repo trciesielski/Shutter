@@ -7,6 +7,8 @@ import {nextIndex,previousIndex,reordered,shuffledQueue} from '../src/audio/queu
 import {extractMetadata} from '../src/audio/musicMetadata.js';
 import {equalPowerCurves} from '../src/audio/crossfadeMath.js';
 import {historyStats} from '../src/audio/listeningHistory.js';
+import {getTrackRating,setTrackRating} from '../src/audio/trackPreferences.js';
+import {buildSharePayload,getPublicShareUrl,shareTrack} from '../src/audio/shareTrack.js';
 
 test('sequential advances and stops at end',()=>{
  assert.equal(nextIndex({length:3,index:0}),1);
@@ -40,6 +42,50 @@ test('ID3v2 title and artist are decoded',async()=>{
 });
 test('history groups listens by id',()=>{
  assert.deepEqual(historyStats([{id:'a'},{id:'b'},{id:'a'}]),[['a',2],['b',1]]);
+});
+
+test('track ratings persist, replace each other, and toggle off',()=>{
+ const values=new Map();
+ const storage={getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,value)};
+ assert.equal(getTrackRating('song-a',storage),null);
+ assert.equal(setTrackRating('song-a','up',storage),'up');
+ assert.equal(getTrackRating('song-a',storage),'up');
+ assert.equal(setTrackRating('song-a','down',storage),'down');
+ assert.equal(getTrackRating('song-a',storage),'down');
+ assert.equal(setTrackRating('song-a',null,storage),null);
+ assert.equal(getTrackRating('song-a',storage),null);
+});
+
+test('share payload accepts only public http(s) links',()=>{
+ const publicTrack={id:'public',title:'Public Song',artist:'Artist',publicUrl:'https://example.com/tracks/public'};
+ assert.equal(getPublicShareUrl(publicTrack),publicTrack.publicUrl);
+ assert.deepEqual(buildSharePayload(publicTrack),{
+  title:'Public Song',
+  text:'Public Song — Artist',
+  url:publicTrack.publicUrl
+ });
+ assert.equal(getPublicShareUrl({title:'Local',url:'blob:https://app.invalid/local'}),null);
+ assert.deepEqual(buildSharePayload({title:'Local',artist:'Artist',url:'blob:https://app.invalid/local'}),{
+  title:'Local',
+  text:'Local — Artist'
+ });
+});
+
+test('share fallback copies public link but never copies local file URL',async()=>{
+ const values=[];
+ const publicTrack={title:'Public Song',artist:'Artist',shareUrl:'https://example.com/song'};
+ assert.equal(await shareTrack(publicTrack,{clipboard:{writeText:value=>{values.push(value);return Promise.resolve()}}}),'copied');
+ assert.deepEqual(values,[publicTrack.shareUrl]);
+ const localResult=await shareTrack({title:'Local Song',url:'blob:https://app.invalid/local'},{clipboard:{writeText:value=>{values.push(value);return Promise.resolve()}}});
+ assert.equal(localResult,'unavailable');
+ assert.deepEqual(values,[publicTrack.shareUrl]);
+});
+
+test('system share sends local metadata without an inaccessible file URL',async()=>{
+ let received=null;
+ const result=await shareTrack({title:'Local Song',artist:'Artist',url:'blob:https://app.invalid/local'},{share:payload=>{received=payload;return Promise.resolve()}});
+ assert.equal(result,'shared');
+ assert.deepEqual(received,{title:'Local Song',text:'Local Song — Artist'});
 });
 
 test('crossfade maintains approximately equal power at midpoint',()=>{

@@ -530,3 +530,42 @@
  touch-action:none;
 }
 .shutter-glass .progress-line input[type="range"]::-webkit-slider-thumb{width:15px;height:15px}
+
+/* LIBRARY V4 — compact three-row track card with independent mobile actions. */
+.library-track{
+ display:grid;
+ grid-template-columns:42px minmax(0,1fr);
+ column-gap:9px;
+ align-items:center;
+ min-height:56px;
+ padding:3px 6px;
+}
+.library-track.selected,.library-track:hover{background:var(--surface2)}
+.library-track-main{
+ width:42px;height:42px;min-width:42px;padding:0;display:grid;place-items:center;
+ border-radius:10px;overflow:hidden;background:transparent;
+}
+.library-track-main:focus-visible,.library-track-copy:focus-visible,.library-track-action:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.library-track-art{width:42px;height:42px;border-radius:10px}
+.library-track-details{min-width:0;display:grid;grid-template-rows:15px 14px 22px;align-content:center;height:50px;overflow:hidden}
+.library-track-copy{display:block;min-width:0;width:100%;height:29px;padding:0;text-align:left;overflow:hidden}
+.library-track-copy strong,.library-track-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.15}
+.library-track-copy strong{font-size:12px;color:var(--text)}
+.library-track-copy small{font-size:10px;color:var(--muted);margin-top:2px}
+.library-track-actions{display:flex;align-items:center;gap:2px;min-width:0;height:22px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.library-track-actions::-webkit-scrollbar{display:none}
+.library-track-action{display:grid;place-items:center;flex:0 0 25px;width:25px;height:22px;padding:0;border-radius:7px;color:var(--muted)}
+.library-track-action:hover{color:var(--text);background:rgba(150,130,185,.12)}
+.library-track-action.is-active{color:#fa719d;background:rgba(250,113,157,.12)}
+.library-track-action.is-positive{color:#58d2aa;background:rgba(88,210,170,.12)}
+.library-track-action.is-negative{color:#f28c9d;background:rgba(242,140,157,.12)}
+.library-track-menu-trigger{flex-basis:25px;width:25px;height:22px;color:var(--muted)}
+.library-track-share-status{position:absolute;right:8px;bottom:-25px;z-index:36;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:0 6px 18px rgba(0,0,0,.2);color:var(--muted);font-size:10px;white-space:nowrap;pointer-events:none}
+.library-track-popover{right:2px;top:calc(100% - 3px)}
+@media(max-width:510px){
+ .library-track{column-gap:8px;padding-left:3px;padding-right:3px}
+ .library-track-details{grid-template-rows:15px 14px 22px}
+ .library-track-action{flex-basis:24px;width:24px}
+ .library-track-menu-trigger{flex-basis:24px;width:24px}
+ .library-track-share-status{right:4px;bottom:-24px;max-width:calc(100vw - 28px);overflow:hidden;text-overflow:ellipsis}
+}
