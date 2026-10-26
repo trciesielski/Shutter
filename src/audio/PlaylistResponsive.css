@@ -11,3 +11,9 @@
 .app-shell{padding-bottom:max(135px,calc(120px + env(safe-area-inset-bottom,0px)))}
 .local-playlists .playlist-detail-scroll{scroll-padding-bottom:28px;padding-bottom:32px}
 @media(max-width:800px){.page-content{padding-bottom:max(205px,calc(185px + env(safe-area-inset-bottom,0px)))!important}.app-shell{padding-bottom:max(175px,calc(155px + env(safe-area-inset-bottom,0px)))}}
+
+/* Home playlist previews use the same bounded, content-sized tiles. */
+.album-grid{grid-template-columns:repeat(auto-fill,minmax(160px,220px));justify-content:start;align-items:start}
+.album-grid .album-card{width:100%;max-width:220px;min-width:0}
+.album-grid .album-cover{max-width:220px;width:100%;aspect-ratio:1/1}
+@media(max-width:520px){.album-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.album-grid .album-card,.album-grid .album-cover{max-width:100%}}
