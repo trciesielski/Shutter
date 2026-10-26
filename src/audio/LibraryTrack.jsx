@@ -2,6 +2,7 @@ import React,{useState,useRef,useEffect} from 'react';
 import {MoreVertical,Heart,Plus,ListPlus,Play,Pause,Trash2,ThumbsUp,ThumbsDown,Share2} from 'lucide-react';
 import {getTrackRating,setTrackRating} from './trackPreferences.js';
 import {shareTrack} from './shareTrack.js';
+import './LibraryTrackLayout.css';
 
 const shareMessages={
  shared:'Udostępniono',
