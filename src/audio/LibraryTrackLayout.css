@@ -20,3 +20,6 @@
  margin:0;padding:0;line-height:0;z-index:2;
 }
 .library-track .library-track-art .library-cover-play svg{display:block;flex:none}
+
+/* Context menu is portalled to the viewport and anchored to its ellipsis button. */
+.library-track-popover.library-track-popover-anchored{transform:none!important;margin:0!important;box-sizing:border-box;overscroll-behavior:contain}
