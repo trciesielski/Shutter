@@ -58,7 +58,7 @@ export default function MinimalNeonWebGL({bins=[],playing=false,intensity=65,onU
   const el=canvas.current;if(!el)return;
   const gl=el.getContext('webgl2',{alpha:true,antialias:false,powerPreference:'low-power'});
   if(!gl){onUnavailable?.();return}
-  let vert,frag,program,buffer,raf=0,disposed=false,frame=0,last=0;
+  let vert,frag,program,buffer,raf=0,disposed=false,last=0,lastDraw=0;
   try{
    vert=compile(gl,gl.VERTEX_SHADER,VERT);frag=compile(gl,gl.FRAGMENT_SHADER,FRAG);
    program=gl.createProgram();gl.attachShader(program,vert);gl.attachShader(program,frag);gl.linkProgram(program);
@@ -73,8 +73,12 @@ export default function MinimalNeonWebGL({bins=[],playing=false,intensity=65,onU
   el.addEventListener('webglcontextlost',contextLost,false);
   const render=t=>{
    if(disposed)return;
-   const inp=inputs.current;const dt=Math.max(8,Math.min(70,t-last||16));last=t;
-   const dpr=Math.min(window.devicePixelRatio||1,inp.background?1.3:1.6);
+   const inp=inputs.current;
+   // Limit expensive full-screen fragment shading to ~30 FPS on all devices.
+   // FFT data still arrives independently; this changes visuals, not audio playback.
+   if(lastDraw&&t-lastDraw<33){raf=requestAnimationFrame(render);return}
+   const dt=Math.max(8,Math.min(70,t-last||16));last=t;lastDraw=t;
+   const dpr=Math.min(window.devicePixelRatio||1,inp.background?1:1.15);
    const scale=inp.reduced?.65:1;const w=Math.max(1,Math.round(el.clientWidth*dpr*scale)),h=Math.max(1,Math.round(el.clientHeight*dpr*scale));
    if(el.width!==w||el.height!==h){el.width=w;el.height=h;gl.viewport(0,0,w,h)}
    const features=spectralFeatures(inp.playing?inp.bins:Array(32).fill(0),previousRaw);
@@ -89,7 +93,7 @@ export default function MinimalNeonWebGL({bins=[],playing=false,intensity=65,onU
    gl.uniform2f(U.resolution,w,h);gl.uniform1f(U.time,t/1000);gl.uniform1f(U.intensity,Math.max(.1,Math.min(1,inp.intensity/100)));
    gl.uniform1f(U.playing,inp.playing&&!inp.reduced?1:0);gl.uniform1fv(U.bins,smooth);
    gl.uniform1f(U.bass,bass);gl.uniform1f(U.mid,mid);gl.uniform1f(U.high,high);gl.uniform1f(U.beat,visualBeat);
-   gl.uniform1fv(U.sustain,new Float32Array(dynamics.sustain));gl.uniform1fv(U.transient,new Float32Array(dynamics.transient));gl.uniform1f(U.flux,dynamics.flux);gl.uniform1f(U.centroid,features.centroid);gl.uniform1f(U.voice,dynamics.voiceSustain);gl.uniform1f(U.voiceAttack,dynamics.voiceTransient);
+   gl.uniform1fv(U.sustain,dynamics.sustain);gl.uniform1fv(U.transient,dynamics.transient);gl.uniform1f(U.flux,dynamics.flux);gl.uniform1f(U.centroid,features.centroid);gl.uniform1f(U.voice,dynamics.voiceSustain);gl.uniform1f(U.voiceAttack,dynamics.voiceTransient);
    gl.drawArrays(gl.TRIANGLES,0,6);
    if(inp.playing&&!inp.reduced)raf=requestAnimationFrame(render);else raf=0;
   };
