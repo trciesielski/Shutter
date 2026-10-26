@@ -95,7 +95,7 @@ function App(){
     <div className="player-controls">
      <button type="button" className="flat-transport-control" aria-label="Losowo" aria-pressed={audio.shuffle} onClick={audio.toggleShuffle}><Shuffle size={19}/></button>
      <button type="button" className="flat-transport-control" aria-label="Poprzedni" onClick={prev}><SkipBack fill="currentColor"/></button>
-     <button type="button" aria-label={activePlaying?'Pauza':'Odtwórz'} className={`flat-transport-control play-button ${activePlaying?"is-playing":""}`} onClick={playToggle}>{activePlaying?<span className="pause-audio-pulse" aria-hidden="true"><span/><span/></span>:<Play fill="currentColor"/>}</button>
+     <button type="button" aria-label={activePlaying?'Pauza':'Odtwórz'} className={`play-button ${activePlaying?"is-playing":""}`} onClick={playToggle}>{activePlaying?<span className="pause-audio-pulse" aria-hidden="true"><span/><span/></span>:<Play fill="currentColor"/>}</button>
      <button type="button" className="flat-transport-control" aria-label="Następny" onClick={next}><SkipForward fill="currentColor"/></button>
      <button type="button" className={`flat-transport-control ${audio.repeat!=='off'?'is-selected':''}`} aria-label={audio.repeat==='one'?'Wyłącz powtarzanie 1':audio.repeat==='all'?'Wyłącz powtarzanie':'Włącz powtarzanie'} aria-pressed={audio.repeat!=='off'} onClick={audio.cycleRepeat}><Repeat2 size={19}/></button>
     </div>

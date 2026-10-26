@@ -601,7 +601,7 @@
  text-align:left!important;
  padding-left:0;
 }
-.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control:not(:disabled){
+.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control:not(.play-button):not(:disabled){
  display:grid;
  place-items:center;
  flex:0 0 34px;
@@ -614,40 +614,21 @@
  box-shadow:none!important;
  color:var(--muted);
 }
-.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control:hover,
-.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control:focus-visible{
+.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control:not(.play-button):hover,
+.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control:not(.play-button):focus-visible{
  color:var(--text);
  background:transparent!important;
 }
-.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control.is-selected{color:var(--text)}
-.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control.play-button:not(:disabled){
- flex-basis:34px;
- width:34px;
- height:34px;
- border-radius:0;
- background:transparent!important;
- box-shadow:none!important;
- color:var(--text)!important;
-}
-.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control.play-button.is-playing:not(:disabled){
- background:transparent!important;
- box-shadow:none!important;
- color:var(--text)!important;
-}
-.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control.play-button::before{display:none!important}
-.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control svg{width:19px;height:19px}
-.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control.play-button svg{width:21px;height:21px}
+.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control.is-selected:not(.play-button){color:var(--text)}
+.shutter-glass .player-bar-v5 .player-controls button.flat-transport-control:not(.play-button) svg{width:19px;height:19px}
 @media(max-width:650px){
  .shutter-glass .player-bar-v5 .player-brand-lockup strong{font-size:11px}
- .shutter-glass .player-bar-v5 .player-controls{gap:12px}
- .shutter-glass .player-bar-v5 .player-controls button.flat-transport-control:not(:disabled),
- .shutter-glass .player-bar-v5 .player-controls button.flat-transport-control.play-button:not(:disabled){
+ .shutter-glass .player-bar-v5 .player-controls button.flat-transport-control:not(.play-button):not(:disabled){
   flex-basis:30px;width:30px;height:30px;
  }
- .shutter-glass .player-bar-v5 .player-controls button.flat-transport-control svg{width:17px;height:17px}
+ .shutter-glass .player-bar-v5 .player-controls button.flat-transport-control:not(.play-button) svg{width:17px;height:17px}
 }
 @media(max-width:355px){
- .shutter-glass .player-bar-v5 .player-controls{gap:7px}
  .shutter-glass .player-bar-v5 .player-brand-lockup{gap:4px}
  .shutter-glass .player-bar-v5 .player-brand-lockup strong{font-size:10px}
 }
