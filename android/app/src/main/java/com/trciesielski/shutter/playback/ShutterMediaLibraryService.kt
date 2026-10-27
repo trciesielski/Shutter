@@ -2,6 +2,8 @@ package com.trciesielski.shutter.playback
 
 import android.app.PendingIntent
 import android.content.Intent
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
@@ -27,6 +29,8 @@ class ShutterMediaLibraryService : MediaLibraryService() {
     private lateinit var player: ExoPlayer
     private lateinit var session: MediaLibrarySession
     private lateinit var store: PlaybackStateStore
+    private val historyTracker = PlaybackHistoryTracker()
+    private var libraryChangeSubscription: AutoCloseable? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -40,6 +44,14 @@ class ShutterMediaLibraryService : MediaLibraryService() {
                 val snapshot = store.snapshot()
                 store.saveQueue(this@ShutterMediaLibraryService, snapshot)
                 scope.launch(Dispatchers.IO) { store.savePosition(database, snapshot) }
+            }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                recordPlayIfNeeded(historyTracker.onMediaItemTransition(mediaItem?.mediaId, player.isPlaying), mediaItem?.mediaId)
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                recordPlayIfNeeded(historyTracker.onIsPlayingChanged(isPlaying, player.currentMediaItem?.mediaId), player.currentMediaItem?.mediaId)
             }
         })
         scope.launch {
@@ -57,6 +69,11 @@ class ShutterMediaLibraryService : MediaLibraryService() {
         session = MediaLibrarySession.Builder(this, player, MediaSessionCallback(tree, scope))
             .setSessionActivity(launchIntent)
             .build()
+        libraryChangeSubscription = SharedLibraryChanges.subscribe { parentId ->
+            scope.launch(Dispatchers.Main.immediate) {
+                if (::session.isInitialized) session.notifyChildrenChanged(parentId, C.LENGTH_UNSET, null)
+            }
+        }
         setMediaNotificationProvider(NotificationFactory.create(this))
         scope.launch(Dispatchers.IO) {
             val restored = store.restore(this@ShutterMediaLibraryService, database, tree)
@@ -74,6 +91,8 @@ class ShutterMediaLibraryService : MediaLibraryService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession = session
 
     override fun onDestroy() {
+        libraryChangeSubscription?.close()
+        libraryChangeSubscription = null
         val snapshot = store.snapshot()
         store.saveQueue(this, snapshot)
         runBlocking(Dispatchers.IO) { store.savePosition(database, snapshot) }
@@ -82,5 +101,13 @@ class ShutterMediaLibraryService : MediaLibraryService() {
         scope.cancel()
         database.close()
         super.onDestroy()
+    }
+
+    private fun recordPlayIfNeeded(shouldRecord: Boolean, mediaId: String?) {
+        if (!shouldRecord || mediaId.isNullOrBlank()) return
+        scope.launch(Dispatchers.IO) {
+            LibraryRepository(database).recordPlay(mediaId, System.currentTimeMillis())
+            SharedHistoryChanges.publish()
+        }
     }
 }

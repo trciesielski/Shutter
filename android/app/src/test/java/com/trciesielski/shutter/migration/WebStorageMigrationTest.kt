@@ -41,9 +41,19 @@ class WebStorageMigrationTest {
         val db = database()
         try {
             val result = WebStorageMigration(db).migrate(mapOf("shutter-user-playlists-v1" to "[oops", "shutter-track-preferences-v1" to """{"a":"down"}"""), 1)
-            assertTrue(result.completed)
+            assertFalse(result.completed)
+            assertFalse(result.alreadyCompleted)
             assertTrue(result.diagnostics.any { it.contains("shutter-user-playlists-v1") })
             assertEquals(0, db.stateDao().rating("a")?.rating)
+            assertNull(db.stateDao().migration(1))
+
+            val retry = WebStorageMigration(db).migrate(mapOf(
+                "shutter-user-playlists-v1" to """[{"id":"retry","name":"Retry","tracks":[]}]""",
+                "shutter-track-preferences-v1" to """{"a":"down"}"""
+            ), 1)
+            assertTrue(retry.completed)
+            assertFalse(retry.alreadyCompleted)
+            assertNotNull(db.stateDao().migration(1))
         } finally { db.close() }
     }
 
@@ -63,7 +73,9 @@ class WebStorageMigrationTest {
             val migration = WebStorageMigration(db)
             migration.migrate(mapOf("shutter-user-playlists-v1" to """[{"id":"p","name":"Old","tracks":["a"]}]"""), 1)
             PlaylistRepository(db).upsert(PlaylistEntity("p", "Native"), listOf("a", "native"))
-            assertFalse(migration.migrate(mapOf("shutter-user-playlists-v1" to """[{"id":"p","name":"New","tracks":["b"]}]"""), 1).completed)
+            val alreadyCompleted = migration.migrate(mapOf("shutter-user-playlists-v1" to """[{"id":"p","name":"New","tracks":["b"]}]"""), 1)
+            assertFalse(alreadyCompleted.completed)
+            assertTrue(alreadyCompleted.alreadyCompleted)
             assertEquals("Native", db.playlistDao().observePlaylists().first().single().name)
             assertEquals(listOf("a", "native"), db.playlistDao().entries("p").map { it.trackId })
         } finally { db.close() }

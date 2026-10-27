@@ -49,6 +49,8 @@ class LibraryRepository(private val db: ShutterDatabase) {
         when (row.rating) { 5 -> row.trackId to "up"; 0 -> row.trackId to "down"; else -> null }
     }.toMap()
     suspend fun recordPlay(trackId: String, playedAtMs: Long) { db.withTransaction { db.stateDao().addHistory(ListeningHistoryEntity(trackId, playedAtMs)) } }
+    suspend fun history(): List<ListeningHistoryEntity> = db.stateDao().history()
+    suspend fun clearHistory() { db.withTransaction { db.stateDao().clearHistory() } }
     suspend fun savePosition(trackId: String?, positionMs: Long, updatedAtMs: Long) {
         require(positionMs >= 0)
         db.withTransaction { db.stateDao().upsertPlayback(PlaybackStateEntity(trackId = trackId, positionMs = positionMs, updatedAtMs = updatedAtMs)) }

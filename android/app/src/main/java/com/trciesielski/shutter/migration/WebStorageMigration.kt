@@ -6,7 +6,13 @@ import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
 
-data class MigrationReport(val completed: Boolean, val diagnostics: List<String>, val importedPlaylists: Int, val importedHistory: Int)
+data class MigrationReport(
+    val completed: Boolean,
+    val diagnostics: List<String>,
+    val importedPlaylists: Int,
+    val importedHistory: Int,
+    val alreadyCompleted: Boolean = false
+)
 private class MigrationTooLarge(message: String) : IllegalArgumentException(message)
 
 /** Parse before writing, then apply all accepted scalar state and the marker in one Room transaction. */
@@ -14,12 +20,17 @@ class WebStorageMigration(private val db: ShutterDatabase) {
     suspend fun migrate(payload: Map<String, String?>, schemaVersion: Int): MigrationReport {
         require(schemaVersion == 1) { "Unsupported migration schema" }
         val diagnostics = mutableListOf<String>()
+        val malformedKeys = mutableSetOf<String>()
         fun <T> read(key: String, fallback: T, decode: (String) -> T): T {
             val raw = payload[key] ?: return fallback
             if (raw.length > 2_000_000) throw MigrationTooLarge("$key: too large; migration not committed")
             return try { decode(raw) }
             catch (error: MigrationTooLarge) { throw error }
-            catch (_: Exception) { diagnostics += "$key: malformed JSON or fields"; fallback }
+            catch (_: Exception) {
+                malformedKeys += key
+                diagnostics += "$key: malformed JSON or fields"
+                fallback
+            }
         }
         val playlists = read("shutter-user-playlists-v1", emptyList<Triple<String, String, List<String>>>()) { raw ->
             val arr = JSONArray(raw)
@@ -72,7 +83,7 @@ class WebStorageMigration(private val db: ShutterDatabase) {
             } else id to (seconds.toDouble() * 1000).toLong()
         }
         return db.withTransaction {
-            if (db.stateDao().migration(1) != null) return@withTransaction MigrationReport(false, diagnostics, 0, 0)
+            if (db.stateDao().migration(1) != null) return@withTransaction MigrationReport(false, diagnostics, 0, 0, alreadyCompleted = true)
             val existing = db.playlistDao().observePlaylists().first().associateBy { it.id }
             val knownTracks = db.trackDao().all().map { it.id }.toSet()
             var count = 0
@@ -90,8 +101,9 @@ class WebStorageMigration(private val db: ShutterDatabase) {
             for (id in favorites) if (db.stateDao().rating(id) == null) db.stateDao().upsertRating(RatingEntity(id, null, true))
             for ((id, at) in history) db.stateDao().addHistory(ListeningHistoryEntity(id, at))
             if (position != null && db.stateDao().playback() == null) db.stateDao().upsertPlayback(PlaybackStateEntity(trackId = position.first, positionMs = position.second, updatedAtMs = System.currentTimeMillis()))
-            db.stateDao().markMigration(MigrationMarkerEntity(1, System.currentTimeMillis()))
-            MigrationReport(true, diagnostics, count, history.size)
+            val completed = malformedKeys.isEmpty()
+            if (completed) db.stateDao().markMigration(MigrationMarkerEntity(1, System.currentTimeMillis()))
+            MigrationReport(completed, diagnostics, count, history.size)
         }
     }
 }

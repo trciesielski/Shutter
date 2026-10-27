@@ -7,7 +7,7 @@ import {startNativePlayback,resumeNativePlayback} from '../src/audio/useNativeAu
 function fakeMedia(){
  const listeners=new Map(),calls=[];
  const media={connect:async()=>({schemaVersion:1,eventType:'playbackState',revision:4,state:'playing',mediaId:'a',positionMs:2500,durationMs:12000,volume:.6,shuffle:true,repeat:'one',queue:['a'],queueIndex:0}),disconnect:async()=>{calls.push(['disconnect'])},addListener:async(name,fn)=>{listeners.set(name,fn);return {remove:async()=>{listeners.delete(name)}}}};
- for(const name of ['play','pause','toggle','stop','skipNext','skipPrevious','seekTo','setVolume','setQueue','playItem','setShuffle','setRepeat','getCatalog','getLibrary','pickLocalFiles','removeLocalTrack'])media[name]=async arg=>{calls.push([name,arg]);return {schemaVersion:1,tracks:[]}};
+ for(const name of ['play','pause','toggle','stop','skipNext','skipPrevious','seekTo','setVolume','setQueue','playItem','setShuffle','setRepeat','getCatalog','getLibrary','getHistory','clearHistory','pickLocalFiles','removeLocalTrack'])media[name]=async arg=>{calls.push([name,arg]);return {schemaVersion:1,tracks:[]}};
  media.getRatings=async()=>({ratings:{}});
  return {media,listeners,calls};
 }
@@ -137,4 +137,20 @@ test('native ratings hydrate from ShutterMedia and edits delegate to it',async()
  await adapter.rateTrack('a','down');
  assert.equal(adapter.snapshot.ratings.a,'down');
  assert.deepEqual(calls.filter(x=>x[0]==='setRating'),[['setRating',{trackId:'a',rating:'down'}]]);
+});
+
+test('native history hydrates, refreshes on service events, and clears through Room bridge',async()=>{
+ const {media,listeners,calls}=fakeMedia();
+ let rows=[{id:'a',title:'Song',artist:'Artist',at:10}];
+ media.getHistory=async()=>({history:rows});
+ media.clearHistory=async()=>{calls.push(['clearHistory',{}]);rows=[];return {schemaVersion:1}};
+ const adapter=createNativePlaybackAdapter(media);await adapter.connect(()=>{});await adapter.refreshHistory();
+ assert.deepEqual(adapter.snapshot.history,rows);
+ rows=[{id:'b',title:'Next',artist:'Artist',at:20}];
+ const refresh=listeners.get('historyChanged')({});
+ await Promise.resolve();await Promise.resolve();
+ assert.deepEqual(adapter.snapshot.history,rows);
+ await adapter.clearHistory();
+ assert.deepEqual(adapter.snapshot.history,[]);
+ assert.deepEqual(calls.filter(x=>x[0]==='clearHistory'),[['clearHistory',{}]]);
 });

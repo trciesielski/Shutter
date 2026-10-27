@@ -24,7 +24,7 @@ class MediaSessionCallback(private val tree: BrowseTree, private val scope: Coro
     override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult =
         MediaSession.ConnectionResult.AcceptedResultBuilder(session)
             .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
-                .add(MediaQueueCommands.SET_QUEUE).add(MediaQueueCommands.PLAY_ITEM).build())
+                .add(MediaQueueCommands.SET_QUEUE).add(MediaQueueCommands.PLAY_ITEM).add(MediaQueueCommands.REMOVE_TRACK).build())
             .build()
 
     override fun onCustomCommand(
@@ -33,21 +33,34 @@ class MediaSessionCallback(private val tree: BrowseTree, private val scope: Coro
         customCommand: SessionCommand,
         args: Bundle
     ): ListenableFuture<SessionResult> {
-        if (customCommand != MediaQueueCommands.SET_QUEUE && customCommand != MediaQueueCommands.PLAY_ITEM) {
+        if (customCommand != MediaQueueCommands.SET_QUEUE && customCommand != MediaQueueCommands.PLAY_ITEM && customCommand != MediaQueueCommands.REMOVE_TRACK) {
             return super.onCustomCommand(session, controller, customCommand, args)
         }
         return async {
             try {
-                val prepared = if (customCommand == MediaQueueCommands.SET_QUEUE) {
+                if (customCommand == MediaQueueCommands.REMOVE_TRACK) {
+                    val id = args.getString(MediaQueueCommands.TRACK_ID).orEmpty()
+                    val ids = (0 until session.player.mediaItemCount).map { session.player.getMediaItemAt(it).mediaId }
+                    val removal = MediaQueueCommands.reconcileRemoval(
+                        ids, session.player.currentMediaItemIndex, session.player.currentPosition,
+                        session.player.playWhenReady, id
+                    )
+                    withContext(Dispatchers.Main) {
+                        applyRemoval(session.player, removal)
+                        MediaQueueCommands.accepted(removal)
+                    }
+                } else {
+                    val prepared = if (customCommand == MediaQueueCommands.SET_QUEUE) {
                     val ids = args.getStringArrayList(MediaQueueCommands.IDS)?.toList()
                         ?: throw IllegalArgumentException("trackIds required")
                     MediaQueueCommands.prepareSetQueue(tree, ids, args.getInt(MediaQueueCommands.INDEX, -1))
-                } else {
-                    MediaQueueCommands.preparePlayItem(tree, args.getString(MediaQueueCommands.TRACK_ID).orEmpty())
-                }
-                withContext(Dispatchers.Main) {
-                    applyQueue(session.player, prepared, customCommand == MediaQueueCommands.PLAY_ITEM)
-                    MediaQueueCommands.accepted(prepared)
+                    } else {
+                        MediaQueueCommands.preparePlayItem(tree, args.getString(MediaQueueCommands.TRACK_ID).orEmpty())
+                    }
+                    withContext(Dispatchers.Main) {
+                        applyQueue(session.player, prepared, customCommand == MediaQueueCommands.PLAY_ITEM)
+                        MediaQueueCommands.accepted(prepared)
+                    }
                 }
             } catch (error: IllegalArgumentException) {
                 SessionResult(SessionError(SessionError.ERROR_BAD_VALUE, error.message ?: "Invalid queue"))
@@ -75,6 +88,24 @@ class MediaSessionCallback(private val tree: BrowseTree, private val scope: Coro
             player.playWhenReady = wasPlaying
             throw error
         }
+    }
+
+    private fun applyRemoval(player: Player, removal: MediaQueueCommands.Removal) {
+        if (!removal.removed) return
+        val previous = (0 until player.mediaItemCount).map(player::getMediaItemAt)
+        val shuffle = player.shuffleModeEnabled
+        val repeat = player.repeatMode
+        if (removal.ids.isEmpty()) {
+            player.clearMediaItems()
+            player.playWhenReady = false
+            return
+        }
+        val remaining = previous.filter { it.mediaId in removal.ids }
+        player.setMediaItems(remaining, removal.index, removal.positionMs)
+        player.shuffleModeEnabled = shuffle
+        player.repeatMode = repeat
+        player.prepare()
+        player.playWhenReady = removal.playWhenReady
     }
 
     override fun onGetLibraryRoot(

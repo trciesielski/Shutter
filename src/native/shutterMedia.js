@@ -1,7 +1,7 @@
 import {Capacitor,registerPlugin} from '@capacitor/core';
 
-const METHODS=new Set(['connect','disconnect','play','pause','toggle','stop','skipNext','skipPrevious','seekTo','setVolume','setQueue','playItem','setShuffle','setRepeat','getCatalog','getLibrary','getPlaylists','getRatings','setRating','pickLocalFiles','removeLocalTrack','migrateWebStorage','createPlaylist','updatePlaylist','deletePlaylist','getAudioAnalysisCapabilities']);
-export const SHUTTER_MEDIA_EVENTS=Object.freeze(['playbackState','position','queueChanged','metadataChanged','catalogChanged','libraryChanged','playlistChanged','audioFocusChanged','analysisFrame','error']);
+const METHODS=new Set(['connect','disconnect','play','pause','toggle','stop','skipNext','skipPrevious','seekTo','setVolume','setQueue','playItem','setShuffle','setRepeat','getCatalog','getLibrary','getHistory','clearHistory','getPlaylists','getRatings','setRating','pickLocalFiles','removeLocalTrack','migrateWebStorage','createPlaylist','updatePlaylist','deletePlaylist','getAudioAnalysisCapabilities']);
+export const SHUTTER_MEDIA_EVENTS=Object.freeze(['playbackState','position','queueChanged','metadataChanged','catalogChanged','libraryChanged','playlistChanged','historyChanged','audioFocusChanged','analysisFrame','error']);
 
 export function createShutterMedia({platform=()=>Capacitor.getPlatform(),register=registerPlugin}={}){
   let plugin;

@@ -28,7 +28,7 @@ test('native Android shell uses Media3 commands without web audio or browser fil
   window.androidBridge={};
   window.__webPlayers=0;window.__webContexts=0;
   window.__nativeCalls=[];
-  const methods=['connect','disconnect','play','pause','toggle','stop','skipNext','skipPrevious','seekTo','setVolume','setQueue','playItem','setShuffle','setRepeat','getCatalog','getLibrary','getPlaylists','getRatings','setRating','pickLocalFiles','removeLocalTrack','migrateWebStorage','createPlaylist','updatePlaylist','deletePlaylist','getAudioAnalysisCapabilities','removeListener'];
+  const methods=['connect','disconnect','play','pause','toggle','stop','skipNext','skipPrevious','seekTo','setVolume','setQueue','playItem','setShuffle','setRepeat','getCatalog','getLibrary','getHistory','clearHistory','getPlaylists','getRatings','setRating','pickLocalFiles','removeLocalTrack','migrateWebStorage','createPlaylist','updatePlaylist','deletePlaylist','getAudioAnalysisCapabilities','removeListener'];
   const snapshot=(state='paused')=>({schemaVersion:1,eventType:'playbackState',revision:state==='playing'?5:1,state,mediaId:'catalog-a',positionMs:0,durationMs:9000,volume:.7,shuffle:false,repeat:'off',queue:['catalog-a'],queueIndex:0});
   window.__ratings={};window.__revision=5;window.__nativeListeners={};
   window.Capacitor={PluginHeaders:[{name:'ShutterMedia',methods:[...methods.map(name=>({name,rtype:'promise'})),{name:'addListener',rtype:'callback'}]}],nativeCallback:(_plugin,_method,options,callback)=>{window.__nativeListeners[options.eventName]=callback;return 'listener-1'},nativePromise:async(_plugin,method,options)=>{
@@ -37,6 +37,7 @@ test('native Android shell uses Media3 commands without web audio or browser fil
    if(method==='playItem'||method==='toggle')return snapshot('playing');
    if(method==='getCatalog')return {tracks:[{id:'catalog-a',source:'catalog',title:'Native song',artist:'Shutter',album:'Music',durationMs:9000,artworkUri:'https://example.test/art.jpg',uri:'https://example.test/song.mp3'},{id:'catalog-b',source:'catalog',title:'Next song',artist:'Shutter',album:'Music',durationMs:9000,artworkUri:'https://example.test/art.jpg',uri:'https://example.test/next.mp3'}]};
    if(method==='getLibrary')return {tracks:[]};
+   if(method==='getHistory')return {history:[]};
    if(method==='getRatings')return {ratings:window.__ratings};
    if(method==='setRating'){window.__ratings[options.trackId]=options.rating;return {rating:options.rating}}
    if(method==='getPlaylists')return {playlists:[{id:'road',name:'Road',tracks:['catalog-a','catalog-b']}]};
@@ -79,7 +80,7 @@ test('native Android shell uses Media3 commands without web audio or browser fil
 test('native startup retry reconnects and migrates before showing the library',async({page})=>{
  await page.addInitScript(()=>{
   window.androidBridge={};window.__nativeCalls=[];
-  const methods=['connect','disconnect','removeListener','migrateWebStorage','getCatalog','getLibrary','getRatings','getPlaylists'];
+  const methods=['connect','disconnect','removeListener','migrateWebStorage','getCatalog','getLibrary','getHistory','clearHistory','getRatings','getPlaylists'];
   window.Capacitor={PluginHeaders:[{name:'ShutterMedia',methods:[...methods.map(name=>({name,rtype:'promise'})),{name:'addListener',rtype:'callback'}]}],nativeCallback:()=> 'listener-1',nativePromise:async(_plugin,method,options)=>{
    window.__nativeCalls.push([method,options]);
    if(method==='connect'){
@@ -89,6 +90,7 @@ test('native startup retry reconnects and migrates before showing the library',a
    if(method==='migrateWebStorage')return {completed:true};
    if(method==='getCatalog')return {tracks:[{id:'a',source:'catalog',title:'Recovered song',artist:'Shutter',album:'Music',durationMs:9000,uri:'https://example.test/a.mp3'}]};
    if(method==='getLibrary')return {tracks:[]};
+   if(method==='getHistory')return {history:[]};
    if(method==='getRatings')return {ratings:{}};
    if(method==='getPlaylists')return {playlists:[]};
    return {schemaVersion:1};

@@ -69,3 +69,12 @@ test('incomplete migration retains raw keys and retries despite an old marker',a
  assert.equal((await migrateLocalStorage(native,storage)).alreadyCompleted,true);
  assert.equal(count,2);
 });
+test('incomplete native migration never writes a completion marker',async()=>{
+ const data=new Map([['shutter-user-playlists-v1','[oops']]);
+ const storage={getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};
+ const native={migrateWebStorage:async()=>({completed:false,diagnostics:['shutter-user-playlists-v1: malformed JSON']})};
+ const report=await migrateLocalStorage(native,storage);
+ assert.equal(report.completed,false);
+ assert.equal(data.get('shutter-user-playlists-v1'),'[oops');
+ assert.equal(data.has('shutter-native-migration-v1'),false);
+});

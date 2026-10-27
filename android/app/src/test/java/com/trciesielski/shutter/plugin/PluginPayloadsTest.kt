@@ -102,4 +102,18 @@ class PluginPayloadsTest {
         assertEquals(listOf("first", "second"), outcome.ids)
         assertEquals(1, outcome.index)
     }
+
+    @Test fun catalogStatusItemBecomesNativeErrorInsteadOfEmptySuccess() {
+        val status = MediaItem.Builder().setMediaId("catalog:error")
+            .setMediaMetadata(MediaMetadata.Builder().setTitle("Catalog unavailable").setIsBrowsable(false).setIsPlayable(false).build())
+            .build()
+        val failure = assertThrows(IllegalStateException::class.java) {
+            PluginPayloads.requireCatalogItems(0, listOf(status))
+        }
+        assertTrue(failure.message!!.contains("Catalog unavailable"))
+
+        val playable = MediaItem.Builder().setMediaId("song")
+            .setMediaMetadata(MediaMetadata.Builder().setIsPlayable(true).build()).build()
+        assertEquals(listOf(playable), PluginPayloads.requireCatalogItems(0, listOf(playable)))
+    }
 }

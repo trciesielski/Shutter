@@ -3,7 +3,7 @@ import {SHUTTER_MEDIA_EVENTS} from '../native/shutterMedia.js';
 
 const track=t=>({id:t.id,source:t.source,title:t.title||'',artist:t.artist||'',album:t.album||'',durationMs:t.durationMs,duration:Math.max(0,(t.durationMs||0)/1000),artworkUri:t.artworkUri,uri:t.uri,coverUrl:t.artworkUri||null,url:t.uri});
 const emptyEq=()=>({available:false,ready:false,bins:Array(32).fill(0),signalStatus:'unavailable',signalDebug:null});
-const initial=()=>({files:[],ratings:{},index:0,state:'idle',seconds:0,duration:0,volume:.7,shuffle:false,repeat:'off',queueIds:[],catalog:{status:'loading',title:null,skipped:[],error:null},error:'',signalStatus:'unavailable',signalDebug:null,eq:emptyEq()});
+const initial=()=>({files:[],ratings:{},history:[],index:0,state:'idle',seconds:0,duration:0,volume:.7,shuffle:false,repeat:'off',queueIds:[],catalog:{status:'loading',title:null,skipped:[],error:null},error:'',signalStatus:'unavailable',signalDebug:null,eq:emptyEq()});
 
 export function createNativePlaybackAdapter(media){
  let state=createNativeState(),snapshot=initial(),notify=()=>{},cleanup=null,connected=false,hydrated=false,refreshing=false,queueTail=Promise.resolve(),analysisRevision=-1;
@@ -28,6 +28,7 @@ export function createNativePlaybackAdapter(media){
    update({signalStatus,signalDebug,eq:{available:measured,ready:measured,bins,signalStatus,signalDebug}});
    return;
   }
+  if(name==='historyChanged'){refreshHistory().catch(e=>update({error:e.message}));return}
   if(name==='error'){update({error:value.message||'Native playback error'});return}
   if((name==='catalogChanged'||name==='libraryChanged')&&hydrated&&!refreshing)refreshLibrary().catch(e=>update({error:e.message}));
  };
@@ -59,6 +60,14 @@ export function createNativePlaybackAdapter(media){
    return unique;
   }finally{refreshing=false}
  }
+ async function refreshHistory(){
+  if(typeof media.getHistory!=='function')return snapshot.history;
+  const result=await media.getHistory();
+  const history=Array.isArray(result?.history)?result.history:[];
+  update({history});
+  return history;
+ }
+ const clearHistory=async()=>{await command('clearHistory');update({history:[]});return snapshot.history};
  const command=async(name,arg={})=>{try{const result=await media[name](arg);if(result?.eventType==='playbackState')applyState(result);return result}catch(e){update({error:e.message});throw e}};
  const serialize=action=>{const result=queueTail.then(action);queueTail=result.catch(()=>{});return result};
  const select=at=>serialize(async()=>{const id=snapshot.files[at]?.id;if(!id)return;const ids=snapshot.queueIds;if(ids.length>1&&ids.includes(id)){await command('setQueue',{trackIds:ids,startIndex:ids.indexOf(id)});return command('play')}return command('playItem',{trackId:id})});
@@ -71,7 +80,7 @@ export function createNativePlaybackAdapter(media){
  const move=(from,to)=>{const ids=[...snapshot.queueIds];if(from<0||from>=ids.length||to<0||to>=ids.length)return;ids.splice(to,0,...ids.splice(from,1));return editQueue(ids)};
  const addNext=id=>{if(!snapshot.files.some(x=>x.id===id))return;const ids=snapshot.queueIds.filter(x=>x!==id),current=snapshot.mediaId;ids.splice(Math.max(0,ids.indexOf(current)+1),0,id);return editQueue(ids)};
  const rateTrack=async(trackId,rating)=>{const result=await command('setRating',{trackId,rating});update({ratings:{...snapshot.ratings,[trackId]:result.rating}});return result.rating};
- return {get snapshot(){return snapshot},connect,refreshLibrary,select,seek,setGain,loadQueue,playQueue,move,addNext,rateTrack,
+ return {get snapshot(){return snapshot},connect,refreshLibrary,refreshHistory,clearHistory,select,seek,setGain,loadQueue,playQueue,move,addNext,rateTrack,
   toggle:()=>command('toggle'),stop:()=>command('stop'),next:()=>command('skipNext'),prev:()=>command('skipPrevious'),
   toggleShuffle:()=>command('setShuffle',{enabled:!snapshot.shuffle}),cycleRepeat:()=>command('setRepeat',{mode:snapshot.repeat==='off'?'all':snapshot.repeat==='all'?'one':'off'}),
   importFiles:()=>command('pickLocalFiles'),remove:id=>command('removeLocalTrack',{trackId:id})};

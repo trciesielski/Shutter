@@ -5,6 +5,7 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
+import androidx.core.content.FileProvider
 import java.io.File
 import java.security.MessageDigest
 
@@ -55,7 +56,7 @@ open class MetadataReader(private val context: Context) {
                 val file = artworkFile(idForArtwork(size, modified))
                 file.parentFile?.mkdirs()
                 file.writeBytes(bytes)
-                artwork = Uri.fromFile(file)
+                artwork = artworkUri(file)
             }
         } finally { retriever.release() }
         return AudioMetadata(title.clean() ?: name?.substringBeforeLast('.')?.clean() ?: "Unknown title",
@@ -67,6 +68,10 @@ open class MetadataReader(private val context: Context) {
         val safeName = digest.joinToString("") { "%02x".format(it.toInt() and 0xff) }
         return File(File(context.filesDir, "library-artwork"), "$safeName.img")
     }
+
+    open fun artworkUri(file: File): Uri = FileProvider.getUriForFile(
+        context, "${context.packageName}.fileprovider", file
+    )
 
     private fun String?.clean(): String? = this?.trim()?.take(512)?.takeIf { it.isNotEmpty() }
 

@@ -24,6 +24,8 @@ import com.getcapacitor.annotation.CapacitorPlugin
 import com.google.common.util.concurrent.ListenableFuture
 import com.trciesielski.shutter.data.*
 import com.trciesielski.shutter.library.SafLibraryManager
+import com.trciesielski.shutter.playback.SharedHistoryChanges
+import com.trciesielski.shutter.playback.SharedLibraryChanges
 import com.trciesielski.shutter.playback.ShutterMediaLibraryService
 import com.trciesielski.shutter.playback.MediaQueueCommands
 import kotlinx.coroutines.*
@@ -41,6 +43,7 @@ class ShutterMediaPlugin : Plugin() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val ordering = PluginEventBridge()
     private var analysisSubscription: AutoCloseable? = null
+    private var historySubscription: AutoCloseable? = null
     private var browser: MediaBrowser? = null
     private val connection = ControllerConnection<MediaBrowser>()
     private var pendingMutation: CompletableDeferred<Unit>? = null
@@ -74,6 +77,9 @@ class ShutterMediaPlugin : Plugin() {
                 if (isActive) emit("analysisFrame", PluginPayloads.analysisFrame(frame), frame.timestampMs)
             }
         }
+        historySubscription = SharedHistoryChanges.subscribe {
+            scope.launch(Dispatchers.Main.immediate) { if (isActive) emit("historyChanged", JSObject()) }
+        }
         scope.launch {
             while (isActive) {
                 delay(1000)
@@ -85,6 +91,8 @@ class ShutterMediaPlugin : Plugin() {
     override fun handleOnDestroy() {
         analysisSubscription?.close()
         analysisSubscription = null
+        historySubscription?.close()
+        historySubscription = null
         scope.cancel()
         browser?.removeListener(listener)
         browser?.release()
@@ -202,7 +210,7 @@ class ShutterMediaPlugin : Plugin() {
 
     private fun queueIds(player: MediaBrowser): List<String> = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
 
-    private suspend fun awaitMutation(player: MediaBrowser, send: suspend () -> SessionResult) {
+    private suspend fun awaitMutation(player: MediaBrowser, allowEmpty: Boolean = false, send: suspend () -> SessionResult) {
         check(pendingMutation == null) { "Another media command is pending" }
         val pending = CompletableDeferred<Unit>()
         pendingMutation = pending
@@ -215,9 +223,12 @@ class ShutterMediaPlugin : Plugin() {
         player.addListener(observer)
         try {
             withTimeout(10_000) {
-                MediaQueueCommands.awaitAccepted(send) { outcome ->
+                MediaQueueCommands.awaitAccepted(send, allowEmpty) { outcome ->
                     if (pending.isCompleted) pending.await()
-                    while (queueIds(player) != outcome.ids || player.currentMediaItemIndex != outcome.index) {
+                    while (true) {
+                        val currentQueue = queueIds(player)
+                        val currentIndex = MediaQueueCommands.acknowledgedIndex(currentQueue, player.currentMediaItemIndex)
+                        if (currentQueue == outcome.ids && currentIndex == outcome.index) break
                         select<Unit> {
                             changes.onReceive { }
                             pending.onAwait { }
@@ -268,10 +279,16 @@ class ShutterMediaPlugin : Plugin() {
         .put("title", item.title).put("artist", item.artist).put("album", item.album)
         .put("durationMs", item.durationMs).put("artworkUri", item.artworkUri?.toString()).put("uri", item.uri.toString())
 
+    private fun publishLibraryChanges(playlistIds: Collection<String> = emptyList(), includeLocal: Boolean = true, includePlaylistRoot: Boolean = false) {
+        if (includeLocal) SharedLibraryChanges.publish("local")
+        if (includePlaylistRoot) SharedLibraryChanges.publish("playlists")
+        playlistIds.distinct().forEach { SharedLibraryChanges.publish("playlist:$it") }
+    }
+
     @PluginMethod fun getCatalog(call: PluginCall) = execute(call) {
         val result = await(controller().getChildren("catalog", 0, 5000, null))
-        require(result.resultCode == 0) { "Catalog unavailable" }
-        val tracks = JSArray(result.value.orEmpty().filter { it.mediaMetadata.isPlayable == true }.map(::track))
+        val catalogItems = PluginPayloads.requireCatalogItems(result.resultCode, result.value.orEmpty())
+        val tracks = JSArray(catalogItems.map(::track))
         emit("catalogChanged", JSObject().put("tracks", tracks))
         JSObject().put("schemaVersion", 1).put("tracks", tracks)
     }
@@ -291,6 +308,7 @@ class ShutterMediaPlugin : Plugin() {
         val rating = rawRating as? String
         require(rating == null || rating == "up" || rating == "down") { "Invalid rating" }
         withContext(Dispatchers.IO) { LibraryRepository(db).setPreferenceRating(id, rating) }
+        publishLibraryChanges()
         emit("libraryChanged", JSObject().put("ratedId", id))
         JSObject().put("schemaVersion", 1).put("trackId", id).put("rating", rating ?: JSONObject.NULL)
     }
@@ -318,12 +336,14 @@ class ShutterMediaPlugin : Plugin() {
             require(rows.any { it.id == id } != create) { if (create) "Playlist exists" else "Playlist missing" }
             PlaylistRepository(db).upsert(PlaylistEntity(id, name, rows.firstOrNull { it.id == id }?.sortOrder ?: rows.size), ids.distinct())
         }
+        publishLibraryChanges(listOf(id), includeLocal = false, includePlaylistRoot = true)
         emit("playlistChanged", JSObject().put("id", id))
         JSObject().put("schemaVersion", 1).put("id", id)
     }
     @PluginMethod fun deletePlaylist(call: PluginCall) = execute(call) {
         val id = PluginPayloads.requiredId(call.data, "id")
         withContext(Dispatchers.IO) { PlaylistRepository(db).remove(id) }
+        publishLibraryChanges(listOf(id), includeLocal = false, includePlaylistRoot = true)
         emit("playlistChanged", JSObject().put("id", id))
         JSObject().put("schemaVersion", 1)
     }
@@ -339,7 +359,9 @@ class ShutterMediaPlugin : Plugin() {
             intent?.clipData?.let { clip -> for (i in 0 until clip.itemCount) add(clip.getItemAt(i).uri) }
         }.distinct()
         execute(call) {
+            val playlistIds = withContext(Dispatchers.IO) { db.playlistDao().playlistIds() }
             val report = withContext(Dispatchers.IO) { SafLibraryManager(context, LibraryRepository(db)).importUris(uris) }
+            publishLibraryChanges(playlistIds, includePlaylistRoot = true)
             emit("libraryChanged", JSObject().put("imported", report.imported))
             JSObject().put("schemaVersion", 1).put("imported", report.imported)
                 .put("failed", JSObject().apply { report.failed.forEach { (uri, reason) -> put(uri.toString(), reason) } })
@@ -347,9 +369,17 @@ class ShutterMediaPlugin : Plugin() {
     }
     @PluginMethod fun removeLocalTrack(call: PluginCall) = execute(call) {
         val id = PluginPayloads.requiredId(call.data, "trackId")
+        val affectedPlaylists = withContext(Dispatchers.IO) { db.playlistDao().playlistIdsForTrack(id) }
         withContext(Dispatchers.IO) { SafLibraryManager(context, LibraryRepository(db)).removeTrack(id) }
+        val player = controller()
+        awaitMutation(player, allowEmpty = true) {
+            await(player.sendCustomCommand(MediaQueueCommands.REMOVE_TRACK, Bundle().apply {
+                putString(MediaQueueCommands.TRACK_ID, id)
+            }))
+        }
+        publishLibraryChanges(affectedPlaylists, includePlaylistRoot = true)
         emit("libraryChanged", JSObject().put("removedId", id))
-        JSObject().put("schemaVersion", 1)
+        state(player)
     }
     @PluginMethod fun migrateWebStorage(call: PluginCall) = execute(call) {
         val version = call.getInt("schemaVersion") ?: throw IllegalArgumentException("schemaVersion required")
@@ -357,12 +387,30 @@ class ShutterMediaPlugin : Plugin() {
         val values = payload.keys().asSequence().associateWith { key -> payload.opt(key) as? String }
         val report = withContext(Dispatchers.IO) { com.trciesielski.shutter.migration.WebStorageMigration(db).migrate(values, version) }
         if (report.completed) {
+            val playlistIds = withContext(Dispatchers.IO) { db.playlistDao().playlistIds() }
+            publishLibraryChanges(playlistIds, includePlaylistRoot = true)
             emit("playlistChanged", JSObject().put("migrated", true))
             emit("libraryChanged", JSObject().put("migrated", true))
         }
         JSObject().put("schemaVersion", 1).put("completed", report.completed)
-            .put("alreadyCompleted", !report.completed).put("diagnostics", JSArray(report.diagnostics))
+            .put("alreadyCompleted", report.alreadyCompleted).put("diagnostics", JSArray(report.diagnostics))
             .put("importedPlaylists", report.importedPlaylists).put("importedHistory", report.importedHistory)
+    }
+    @PluginMethod fun getHistory(call: PluginCall) = execute(call) {
+        val history = withContext(Dispatchers.IO) {
+            val database = db
+            database.stateDao().history().take(500).map { row ->
+                val track = database.trackDao().find(row.trackId)
+                JSObject().put("id", row.trackId).put("title", track?.title ?: row.trackId)
+                    .put("artist", track?.artist ?: "").put("album", track?.album ?: "").put("at", row.playedAtMs)
+            }
+        }
+        JSObject().put("schemaVersion", 1).put("history", JSArray(history))
+    }
+    @PluginMethod fun clearHistory(call: PluginCall) = execute(call) {
+        withContext(Dispatchers.IO) { LibraryRepository(db).clearHistory() }
+        SharedHistoryChanges.publish()
+        JSObject().put("schemaVersion", 1)
     }
     @PluginMethod fun getAudioAnalysisCapabilities(call: PluginCall) = call.resolve(JSObject().put("schemaVersion", 1).put("available", false))
 }

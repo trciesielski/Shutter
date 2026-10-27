@@ -152,4 +152,34 @@ class QueueStateTest {
             db.close()
         }
     }
+
+    @Test fun removingLocalTrackReconcilesIndexPositionAndPlayState() {
+        val shifted = MediaQueueCommands.reconcileRemoval(
+            ids = listOf("a", "local", "b"), currentIndex = 2, currentPositionMs = 3500,
+            playWhenReady = true, removeId = "local"
+        )
+        assertEquals(listOf("a", "b"), shifted.ids)
+        assertEquals(1, shifted.index)
+        assertEquals(3500L, shifted.positionMs)
+        assertTrue(shifted.playWhenReady)
+
+        val current = MediaQueueCommands.reconcileRemoval(
+            ids = listOf("a", "local", "b"), currentIndex = 1, currentPositionMs = 3500,
+            playWhenReady = false, removeId = "local"
+        )
+        assertEquals(listOf("a", "b"), current.ids)
+        assertEquals(1, current.index)
+        assertEquals(0L, current.positionMs)
+        assertFalse(current.playWhenReady)
+
+        val empty = MediaQueueCommands.reconcileRemoval(
+            ids = listOf("local"), currentIndex = 0, currentPositionMs = 3500,
+            playWhenReady = true, removeId = "local"
+        )
+        assertTrue(empty.ids.isEmpty())
+        assertEquals(0, empty.index)
+        assertEquals(0L, empty.positionMs)
+        assertFalse(empty.playWhenReady)
+        assertEquals(0, MediaQueueCommands.acknowledgedIndex(empty.ids, -1))
+    }
 }

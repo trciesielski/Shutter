@@ -1,6 +1,7 @@
 package com.trciesielski.shutter.plugin
 
 import androidx.media3.common.MediaItem
+import androidx.media3.session.LibraryResult
 import com.getcapacitor.JSObject
 import com.trciesielski.shutter.audio.NativeAudioAnalysisFrame
 import org.json.JSONArray
@@ -51,4 +52,10 @@ object PluginPayloads {
             .put("rms", frame.rms)
             .put("peak", frame.peak)
             .put("maxBand", frame.bands.maxOrNull() ?: 0))
+
+    fun requireCatalogItems(resultCode: Int, items: List<MediaItem>): List<MediaItem> {
+        check(resultCode == LibraryResult.RESULT_SUCCESS) { "Catalog unavailable" }
+        check(items.none { it.mediaId == "catalog:error" }) { "Catalog unavailable; retry later" }
+        return items.filter { it.mediaMetadata.isPlayable == true }
+    }
 }

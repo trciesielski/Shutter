@@ -33,7 +33,9 @@ interface PlaylistDao {
     @Query("DELETE FROM playlist_entries WHERE playlistId = :playlistId") suspend fun clearEntries(playlistId: String)
     @Query("UPDATE playlist_entries SET trackId = :newId, orphaned = 0 WHERE trackId = :oldId") suspend fun retargetEntries(oldId: String, newId: String)
     @Query("SELECT * FROM playlists ORDER BY sortOrder, id") fun observePlaylists(): Flow<List<PlaylistEntity>>
+    @Query("SELECT id FROM playlists ORDER BY sortOrder, id") suspend fun playlistIds(): List<String>
     @Query("SELECT * FROM playlist_entries WHERE playlistId = :playlistId ORDER BY position") suspend fun entries(playlistId: String): List<PlaylistEntryEntity>
+    @Query("SELECT playlistId FROM playlist_entries WHERE trackId = :trackId") suspend fun playlistIdsForTrack(trackId: String): List<String>
     @Query("DELETE FROM playlists WHERE id = :playlistId") suspend fun remove(playlistId: String)
 }
 
@@ -44,6 +46,7 @@ interface StateDao {
     @Query("SELECT * FROM ratings") suspend fun ratings(): List<RatingEntity>
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun addHistory(value: ListeningHistoryEntity)
     @Query("SELECT * FROM listening_history ORDER BY playedAtMs DESC, trackId") suspend fun history(): List<ListeningHistoryEntity>
+    @Query("DELETE FROM listening_history") suspend fun clearHistory()
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertPlayback(value: PlaybackStateEntity)
     @Query("SELECT * FROM playback_state WHERE `key` = 'current'") suspend fun playback(): PlaybackStateEntity?
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun markMigration(value: MigrationMarkerEntity)
