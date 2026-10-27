@@ -56,6 +56,17 @@ test('upload extracts tags and artwork, rejects spoofed files, publishes and the
  await item.getByLabel(/^Gatunek/).fill('Jazz polski');
  await item.getByRole('button',{name:'Wyślij i dodaj do katalogu'}).click();
  await expect(item.getByText('Dodano do wersji roboczej')).toBeVisible({timeout:30000});
+ // The seeded catalog references covers/none.jpg which does not exist in the bucket: publishing
+ // must flag the missing object instead of shipping a broken catalog.
+ await page.getByRole('button',{name:'Opublikuj katalog'}).click();
+ await expect(page.getByText('Katalog zawiera błędy i nie został opublikowany.')).toBeVisible();
+ await expect(page.getByText('covers/none.jpg: brak pliku w magazynie')).toBeVisible();
+ await page.getByRole('button',{name:'Zamknij komunikat'}).first().click();
+ // Repair the reference by reusing the existing artwork, then publish again.
+ nav(page,'Katalog').click();
+ await page.getByRole('button',{name:'Edytuj: Missing cover'}).click();
+ await page.getByRole('dialog').getByLabel('Użyj istniejącej okładki').selectOption('covers/c.jpg');
+ await page.getByRole('button',{name:'Zastosuj w wersji roboczej'}).click();
  await page.getByRole('button',{name:'Opublikuj katalog'}).click();
  await expect(page.getByText(/Katalog opublikowany/)).toBeVisible();
  const data=await catalog(request);
@@ -66,6 +77,7 @@ test('upload extracts tags and artwork, rejects spoofed files, publishes and the
  expect(added.thumbnail).toMatch(/^covers\/\d{4}\/[a-f0-9]{16}\.webp$/);
  expect(data.tracks.some(t=>t.id==='bad')).toBe(false);
  expect(data.tracks.map(t=>t.id).slice(0,3)).toEqual(['t1','t2','t3']);
+ expect(data.tracks.find(t=>t.id==='t3').cover).toBe('covers/c.jpg');
  expect((await request.get(SITE+'/music/'+added.cover)).status()).toBe(200);
  // Public visitor (no Access token) sees and plays the newly published track.
  const visitor=await browser.newPage();

@@ -216,3 +216,109 @@ test('published catalog is served by the public read-only endpoint, playable by 
  const admin=await handleMediaRequest({request:new Request(ORIGIN+'/music/admin/catalog-history/x.json'),env:{MUSIC_BUCKET:bucket},params:{path:['admin','catalog-history','x.json']}});
  assert.equal(admin.status,404,'history and upload sessions are not public');
 });
+
+// --- Devin Review fixes: create-only CAS, all-reference checks, tombstones, ownership, shareUrl ---
+import {localBucket as freshBucket} from './helpers/r2.js';
+
+test('first publication is create-only: a concurrent first publish cannot overwrite',async()=>{
+ const {bucket:b,dispose:d}=await freshBucket();
+ try{
+  const results=await Promise.allSettled([
+   publishCatalog(b,{version:1,title:'Katalog A',tracks:[]},{ifMatch:null,actor:'a'}),
+   publishCatalog(b,{version:1,title:'Katalog B',tracks:[]},{ifMatch:null,actor:'b'})
+  ]);
+  const ok=results.filter(r=>r.status==='fulfilled'),ko=results.filter(r=>r.status==='rejected');
+  assert.equal(ok.length,1);assert.equal(ko.length,1);
+  assert.equal(ko[0].reason.status,412);assert.equal(ko[0].reason.code,'catalog_conflict');
+  assert.ok(await b.head(CATALOG_KEY));
+  await assert.rejects(publishCatalog(b,{version:1,tracks:[]},{ifMatch:null,actor:'c'}),e=>e.status===412);
+ }finally{await d()}
+});
+
+test('publishing fails when a previously referenced object vanished',async()=>{
+ const cur=(await call('GET','catalog')).body;
+ const victim=cur.catalog.tracks[0];
+ assert.equal((await call('DELETE','objects',{key:'tracks/z-lost.mp3',confirm:'tracks/z-lost.mp3'})).status,404);
+ const audio=victim.audio;
+ await bucket.delete(audio); // external removal, e.g. manual bucket cleanup
+ try{
+  const r=await call('PUT','catalog',{catalog:{...cur.catalog,tracks:cur.catalog.tracks.map(t=>({...t,title:t.id===victim.id?'Zmieniony tytuł':t.title}))},etag:cur.etag});
+  assert.equal(r.status,422);
+  assert.deepEqual([...new Set(r.body.errors.map(e=>e.code))],['object_missing']);
+  assert.ok(r.body.errors.some(e=>e.field===audio));
+ }finally{
+  await bucket.put(audio,new Uint8Array(MP3)); // restore so later tests stay consistent
+ }
+});
+
+test('a key reserved by an in-flight deletion cannot be published',async()=>{
+ const cur=(await call('GET','catalog')).body;
+ const audio=cur.catalog.tracks[0].audio;
+ await bucket.put('admin/deletion/'+audio,'{"reserved":true}');
+ try{
+  const r=await call('PUT','catalog',{catalog:{...cur.catalog,tracks:cur.catalog.tracks.map(t=>({...t,title:t.title+' v2'}))},etag:cur.etag});
+  assert.equal(r.status,422);
+  assert.ok(r.body.errors.some(e=>e.code==='object_pending_delete'&&e.field===audio));
+ }finally{
+  await bucket.delete('admin/deletion/'+audio);
+ }
+});
+
+test('shareUrl survives a publish round trip; unsafe values are rejected',async()=>{
+ const cur=(await call('GET','catalog')).body;
+ const linked=cur.catalog.tracks.map((t,i)=>i===0?{...t,shareUrl:'https://artists.example/utwor-1'}:{...t});
+ const r=await call('PUT','catalog',{catalog:{...cur.catalog,tracks:linked},etag:cur.etag});
+ assert.equal(r.status,200,JSON.stringify(r.body));
+ const published=await catalogJson();
+ assert.equal(published.tracks[0].shareUrl,'https://artists.example/utwor-1');
+ const now=(await call('GET','catalog')).body;
+ const bad=await call('PUT','catalog',{catalog:{...now.catalog,tracks:now.catalog.tracks.map((t,i)=>i===0?{...t,shareUrl:'javascript:alert(1)'}:t)},etag:now.etag});
+ assert.equal(bad.status,422);assert.equal(bad.body.errors[0].code,'invalid_share_url');
+ const http=await call('PUT','catalog',{catalog:{...now.catalog,tracks:now.catalog.tracks.map((t,i)=>i===0?{...t,shareUrl:'http://x.example'}:t)},etag:now.etag});
+ assert.equal(http.status,422);
+ // restore catalog without the shareUrl
+ const cur2=(await call('GET','catalog')).body;
+ assert.equal((await call('PUT','catalog',{catalog:{...cur2.catalog,tracks:cur2.catalog.tracks.map(({shareUrl,...t})=>t)},etag:cur2.etag})).status,200);
+});
+async function catalogJson(){const res=await handleMediaRequest({request:new Request(ORIGIN+'/music/catalog/catalog.json'),env:{MUSIC_BUCKET:bucket},params:{path:['catalog','catalog.json']}});return res.json()}
+
+test('permanent deletion: in-progress tombstone and catalog races abort safely',async()=>{
+ const up=await upload('audio','c.mp3',MP3,'audio/mpeg');
+ assert.equal(up.status,200);
+ await bucket.put('admin/deletion/'+up.body.key,'{}');
+ try{
+  const held=await call('DELETE','objects',{key:up.body.key,confirm:up.body.key});
+  assert.equal(held.status,409);assert.equal(held.body.error,'delete_in_progress');
+ }finally{await bucket.delete('admin/deletion/'+up.body.key)}
+ // Catalog moved under our feet between the reference check and the conditional commit.
+ let released=false;
+ const racing=new Proxy(bucket,{get(target,prop){if(prop==='put')return async(k,v,o)=>{if(k===CATALOG_KEY&&!released)return null;return target.put(k,v,o)};const v=target[prop];return typeof v==='function'?v.bind(target):v}});
+ await assert.rejects((async()=>{
+  // drive the API path with the racing bucket
+  const res=await handleAdminApi({request:new Request(ORIGIN+'/api/admin/objects',{method:'DELETE',headers:{'Cf-Access-Jwt-Assertion':await sign(key),'X-Shutter-Admin':'1',Origin:ORIGIN,'Content-Type':'application/json'},body:JSON.stringify({key:up.body.key,confirm:up.body.key})}),env:{...env(),MUSIC_BUCKET:racing},params:{path:['objects']}},{fetchImpl:jwksFetch(key)});
+  assert.equal(res.status,409);assert.equal((await res.json()).error,'catalog_changed');
+  throw new Error('expected-reject-marker');
+ })(),e=>e.message==='expected-reject-marker');
+ assert.ok(await bucket.head(up.body.key),'object must survive an aborted delete');
+ assert.equal(await bucket.head('admin/deletion/'+up.body.key),null,'tombstone cleaned up');
+ const del=await call('DELETE','objects',{key:up.body.key,confirm:up.body.key});
+ assert.equal(del.status,200);
+});
+
+test('upload sessions are bound to the administrator who created them',async()=>{
+ const strict={ADMIN_EMAILS:'admin@example.com,other@example.com'};
+ const otherToken=await sign(key,{email:'other@example.com'});
+ const started=await call('POST','uploads',{kind:'audio',name:'a.mp3',size:MP3.length,type:'audio/mpeg'});
+ assert.equal(started.status,201);
+ const sid=started.body.session;
+ for(const [method,path,raw] of [
+  ['PUT',`uploads/${sid}/parts/1`,MP3],
+  ['POST',`uploads/${sid}/complete`],
+  ['DELETE',`uploads/${sid}`]
+ ]){
+  const res=await call(method,path,method==='POST'?{parts:[{partNumber:1,etag:'x'}]}:undefined,{raw,token:otherToken,envExtra:strict});
+  assert.equal(res.status,403,`${method} ${path}`);assert.equal(res.body.error,'not_session_owner');
+ }
+ assert.equal((await call('PUT',`uploads/${sid}/parts/1`,undefined,{raw:MP3})).status,200,'owner still writes');
+ await call('DELETE','uploads/'+sid);
+});

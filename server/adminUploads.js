@@ -83,11 +83,14 @@ export async function startUpload(bucket,body,{actor,catalog}){
  return {session:sid,key:plan.key,partSize:PART_SIZE,parts:plan.parts};
 }
 
-async function loadSession(bucket,sid){
+async function loadSession(bucket,sid,actor){
  if(typeof sid!=='string'||!SESSION_ID.test(sid))throw new UploadError(404,'upload_not_found');
  const obj=await bucket.get(sessionKey(sid));
  if(!obj)throw new UploadError(404,'upload_not_found');
  const s=JSON.parse(await obj.text());
+ // Sessions are bound to the administrator who created them: knowing a session id must not let
+ // another account write parts, complete or cancel it.
+ if(actor&&s.actor&&s.actor!==actor)throw new UploadError(403,'not_session_owner');
  if(Date.now()-s.created>SESSION_TTL_MS){await abortSession(bucket,sid,s);throw new UploadError(410,'upload_expired')}
  return s;
 }
@@ -97,8 +100,8 @@ async function abortSession(bucket,sid,s){
  await bucket.delete(sessionKey(sid));
 }
 
-export async function uploadPart(bucket,sid,partNumber,request){
- const s=await loadSession(bucket,sid);
+export async function uploadPart(bucket,sid,partNumber,request,{actor}={}){
+ const s=await loadSession(bucket,sid,actor);
  const n=Number(partNumber);
  if(!Number.isInteger(n)||n<1||n>s.parts)throw new UploadError(400,'invalid_part');
  const expected=n<s.parts?PART_SIZE:s.size-(s.parts-1)*PART_SIZE;
@@ -111,8 +114,8 @@ export async function uploadPart(bucket,sid,partNumber,request){
  return {partNumber:part.partNumber,etag:part.etag};
 }
 
-export async function completeUpload(bucket,sid,body){
- const s=await loadSession(bucket,sid);
+export async function completeUpload(bucket,sid,body,{actor}={}){
+ const s=await loadSession(bucket,sid,actor);
  const parts=Array.isArray(body?.parts)?body.parts:[];
  if(parts.length!==s.parts)throw new UploadError(400,'incomplete_upload');
  const sorted=[...parts].sort((a,b)=>a.partNumber-b.partNumber);
@@ -131,8 +134,8 @@ export async function completeUpload(bucket,sid,body){
  return {key:s.key,size:s.size,kind:s.kind,contentType:s.contentType,fingerprint:s.fingerprint};
 }
 
-export async function cancelUpload(bucket,sid){
- const s=await loadSession(bucket,sid);
+export async function cancelUpload(bucket,sid,{actor}={}){
+ const s=await loadSession(bucket,sid,actor);
  await abortSession(bucket,sid,s);
  return {cancelled:true};
 }

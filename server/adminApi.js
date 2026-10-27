@@ -1,7 +1,7 @@
 // /api/admin/* router. Authentication runs first for every request; nothing below is reachable without
 // a valid Cloudflare Access JWT from an allow-listed administrator.
 import {authenticateAdmin,checkSameOrigin,denied,jsonResponse} from './adminAuth.js';
-import {readCatalog,publishCatalog,listHistory,rollbackCatalog,referencedKeys,validateAdminCatalog,PublishError,CATALOG_KEY} from './adminCatalog.js';
+import {readCatalog,publishCatalog,listHistory,rollbackCatalog,referencedKeys,validateAdminCatalog,PublishError,CATALOG_KEY,tombstoneKey} from './adminCatalog.js';
 import {startUpload,uploadPart,completeUpload,cancelUpload,UploadError} from './adminUploads.js';
 import {objectKey} from './r2PublicMedia.js';
 
@@ -42,17 +42,38 @@ async function storage(bucket){
  return {totals,objects,missing};
 }
 
-async function deleteObject(bucket,body){
+// Permanent deletion is serialized against concurrent publishers by a tombstone at
+// `admin/deletion/<key>` plus a conditional commit of the catalog:
+//  1. create-only tombstone — after it exists, no publish can succeed referencing the key
+//     (missingObjects checks it), and a second delete gets 409;
+//  2. conditional put of the unchanged catalog on the etag we read — any publisher that checked
+//     references before the tombstone must CAS the same etag, so either it commits first (our
+//     commit fails, we abort) or we do (its CAS then fails);
+//  3. only then the object is deleted, and the tombstone is removed.
+// Residual: a first-ever catalog creation racing a delete cannot conflict on the etag (the key does
+// not exist yet); the re-read in step 2 catches a catalog committed after we started.
+async function deleteObject(bucket,body,actor){
  const key=typeof body?.key==='string'?objectKey(body.key.split('/'),MEDIA_PREFIXES):null;
  if(!key)throw new UploadError(400,'invalid_key');
  if(body.confirm!==key)throw new UploadError(400,'confirmation_required');
- const current=await readCatalog(bucket);
- if(current.exists&&!current.data)throw new UploadError(409,'catalog_unreadable');
- const users=referencedKeys(current.data).get(key);
- if(users?.length)throw new UploadError(409,'object_referenced',{tracks:users});
- if(!await bucket.head(key))throw new UploadError(404,'not_found');
- await bucket.delete(key);
- return {deleted:key};
+ const tombstone=tombstoneKey(key);
+ const reserved=await bucket.put(tombstone,JSON.stringify({key,by:actor||'',at:new Date().toISOString()}),{onlyIf:{etagDoesNotMatch:'*'},httpMetadata:{contentType:'application/json'}});
+ if(!reserved)throw new UploadError(409,'delete_in_progress',{key});
+ try{
+  const current=await readCatalog(bucket);
+  if(current.exists&&!current.data)throw new UploadError(409,'catalog_unreadable');
+  const users=referencedKeys(current.data).get(key);
+  if(users?.length)throw new UploadError(409,'object_referenced',{tracks:users});
+  if(!await bucket.head(key))throw new UploadError(404,'not_found');
+  if(current.exists){
+   const pinned=await bucket.put(CATALOG_KEY,current.text,{onlyIf:{etagMatches:current.etag},httpMetadata:{contentType:'application/json; charset=utf-8',cacheControl:'no-cache'}});
+   if(!pinned)throw new UploadError(409,'catalog_changed');
+  }
+  await bucket.delete(key);
+  return {deleted:key};
+ }finally{
+  await bucket.delete(tombstone).catch(()=>{});
+ }
 }
 
 export async function handleAdminApi({request,env={},params={}},options={}){
@@ -87,15 +108,15 @@ export async function handleAdminApi({request,env={},params={}},options={}){
    return jsonResponse(200,{etag:result.etag,catalog:result.catalog,backupKey:result.backupKey});
   }
   if(route==='storage'&&method==='GET')return jsonResponse(200,await storage(bucket));
-  if(route==='objects'&&method==='DELETE')return jsonResponse(200,await deleteObject(bucket,await readJson(request)));
+  if(route==='objects'&&method==='DELETE')return jsonResponse(200,await deleteObject(bucket,await readJson(request),admin.email));
   if(route==='uploads'&&method==='POST'){
    const body=await readJson(request,10_000);
    const current=await readCatalog(bucket);
    return jsonResponse(201,await startUpload(bucket,body,{actor:admin.email,catalog:current.data}));
   }
-  if(path[0]==='uploads'&&path.length===4&&path[2]==='parts'&&method==='PUT')return jsonResponse(200,await uploadPart(bucket,path[1],path[3],request));
-  if(path[0]==='uploads'&&path.length===3&&path[2]==='complete'&&method==='POST')return jsonResponse(200,await completeUpload(bucket,path[1],await readJson(request,1_000_000)));
-  if(path[0]==='uploads'&&path.length===2&&method==='DELETE')return jsonResponse(200,await cancelUpload(bucket,path[1]));
+  if(path[0]==='uploads'&&path.length===4&&path[2]==='parts'&&method==='PUT')return jsonResponse(200,await uploadPart(bucket,path[1],path[3],request,{actor:admin.email}));
+  if(path[0]==='uploads'&&path.length===3&&path[2]==='complete'&&method==='POST')return jsonResponse(200,await completeUpload(bucket,path[1],await readJson(request,1_000_000),{actor:admin.email}));
+  if(path[0]==='uploads'&&path.length===2&&method==='DELETE')return jsonResponse(200,await cancelUpload(bucket,path[1],{actor:admin.email}));
   return jsonResponse(404,{error:'not_found'});
  }catch(error){
   if(error instanceof UploadError||error instanceof PublishError)return jsonResponse(error.status,{error:error.code,...error.details});

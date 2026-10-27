@@ -65,6 +65,9 @@ The browser never holds R2 credentials. Uploads are R2 multipart uploads driven 
 3. `POST /api/admin/uploads/<id>/complete` — completes, re-reads the stored head, verifies size and
    signature; an invalid object is deleted.
 
+Sessions are bound to their owner: a different administrator who knows a session ID gets 403
+`not_session_owner` on parts, complete and cancel.
+
 Limits: audio 1 GiB, cover 25 MiB. Client keys, prefixes and paths are ignored. Duplicates are
 detected by a SHA-256 fingerprint (size + first/last 2 MiB) against the catalog (409, can be
 overridden explicitly).
@@ -73,10 +76,11 @@ overridden explicitly).
 
 - `GET /api/admin/catalog` returns the catalog and its R2 ETag.
 - `PUT /api/admin/catalog` `{catalog, etag}` validates strictly (stable IDs, safe keys under
-  `tracks/`/`covers/`, NFC text, field limits), checks every referenced object exists, copies the
-  current version to `admin/catalog-history/<timestamp>-<random>.json`, then writes with
-  `onlyIf: {etagMatches}`. A concurrent change returns **412 `catalog_conflict`** and nothing is
-  overwritten. History keeps the last 100 versions.
+  `tracks/`/`covers/`, NFC text, field limits, `shareUrl` preserved when it is an `https://` URL),
+  checks that **every** referenced object exists, copies the current version to
+  `admin/catalog-history/<timestamp>-<random>.json`, then writes with `onlyIf: {etagMatches}` —
+  or `onlyIf: {etagDoesNotMatch: '*'}` (create-only) for the first catalog. Concurrent changes get
+  **412 `catalog_conflict`** and nothing is overwritten. History keeps the last 100 versions.
 - `POST /api/admin/catalog/rollback` publishes a stored version through the same path (so the
   rollback itself is backed up and reversible).
 - The public catalog is served with `Cache-Control: no-cache` (ETag revalidation) and the player
@@ -88,6 +92,11 @@ overridden explicitly).
 2. **Delete permanently** — *Magazyn*, only for objects not referenced by the published catalog or the
    current draft; requires typing `USUŃ`; the API requires `confirm` equal to the exact key and
    refuses keys outside `tracks/` and `covers/` or referenced (including shared covers) with 409.
+   Deletion is serialised against concurrent publishers: a create-only tombstone at
+   `admin/deletion/<key>` (409 `delete_in_progress` if already held) plus a conditional re-commit of
+   the catalog on its current ETag (409 `catalog_changed` if a publish landed in between). Any
+   publish referencing a tombstoned key is rejected with `object_pending_delete`, so a deletion and
+   a publication of the same object cannot both succeed.
 
 ## Local testing
 
