@@ -4,4 +4,5 @@
     <string name="title_activity_main">Shutter</string>
     <string name="package_name">com.trciesielski.shutter</string>
     <string name="custom_url_scheme">com.trciesielski.shutter</string>
+    <string name="playback_channel_name">Shutter playback</string>
 </resources>
