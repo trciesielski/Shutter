@@ -59,6 +59,7 @@ function App(){
  const seekTo=value=>{audio.seek(value);setSeekPreview(null)};
  const seekPercent=seekPreview??(totalSeconds>0?Math.min(100,Math.max(0,currentSeconds/totalSeconds*100)):0);
  const nav=id=>{setView(id);setMobileMenu(false)};
+ if(audio.nativePlaybackPending)return <main role="status" style={{minHeight:'100dvh',display:'grid',placeItems:'center',padding:'2rem',textAlign:'center'}}><div><h1>Shutter Music</h1><p>Biblioteka i sterowanie odtwarzaniem na telefonie są obecnie niedostępne.</p></div></main>;
  return <div className="app-shell"><svg aria-hidden="true" width="0" height="0" style={{position:"absolute",pointerEvents:"none"}}><defs><filter id="shutter-lens" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.016 0.035" numOctaves="2" seed="8" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G"/></filter></defs></svg>
  <aside className={`sidebar ${mobileMenu?'open':''}`}>
   <div className="brand"><div className="brand-mark"><span/><span/><span/><span/></div><span>shutter<span className="brand-dot">.</span></span><button className="menu-close" onClick={()=>setMobileMenu(false)} aria-label="Zamknij menu"><X size={19}/></button></div>

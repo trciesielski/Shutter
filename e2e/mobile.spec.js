@@ -23,7 +23,7 @@ test('mobile build keeps local import, playback and deletion',async({page})=>{
  await expect(play).toHaveCount(0);
 });
 
-test('native Android shell never constructs web audio players or graph',async({page})=>{
+test('native Android shell hides unbacked library controls and never starts web audio',async({page})=>{
  await page.addInitScript(()=>{
   window.androidBridge={};
   window.__webPlayers=0;window.__webContexts=0;
@@ -33,7 +33,8 @@ test('native Android shell never constructs web audio players or graph',async({p
   if(OriginalContext)window.AudioContext=class extends OriginalContext{constructor(...args){super(...args);window.__webContexts++}};
  });
  await page.goto('/');
- await goLibrary(page);
+ await expect(page.getByRole('status')).toContainText('Biblioteka i sterowanie odtwarzaniem na telefonie są obecnie niedostępne.');
+ await expect(page.getByRole('button')).toHaveCount(0);
  await expect(page.locator('input[type=file]')).toHaveCount(0);
  expect(await page.evaluate(()=>window.Capacitor.getPlatform())).toBe('android');
  expect(await page.evaluate(()=>[window.__webPlayers,window.__webContexts])).toEqual([0,0]);
