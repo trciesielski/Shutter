@@ -65,6 +65,7 @@ class NativeAudioAnalyzer(
     private val emptyBuffer = ByteBuffer.allocate(0)
     private var outputBuffer: ByteBuffer = emptyBuffer
     private var inputFormat = AudioProcessor.AudioFormat.NOT_SET
+    private var inputEnded = false
     private var active = false
     private var sampleRate = 0
     private var channelCount = 0
@@ -93,6 +94,7 @@ class NativeAudioAnalyzer(
         samples = FloatArray(windowSizeSamples)
         sampleCount = 0
         outputBuffer = emptyBuffer
+        inputEnded = false
         return inputAudioFormat
     }
 
@@ -127,7 +129,9 @@ class NativeAudioAnalyzer(
         }
     }
 
-    override fun queueEndOfStream() = Unit
+    override fun queueEndOfStream() {
+        inputEnded = true
+    }
 
     override fun getOutput(): ByteBuffer {
         val output = outputBuffer
@@ -135,16 +139,18 @@ class NativeAudioAnalyzer(
         return output
     }
 
-    override fun isEnded(): Boolean = outputBuffer == emptyBuffer || !outputBuffer.hasRemaining()
+    override fun isEnded(): Boolean = inputEnded && !outputBuffer.hasRemaining()
 
     override fun flush() {
         outputBuffer = emptyBuffer
         sampleCount = 0
+        inputEnded = false
     }
 
     override fun reset() {
         flush()
         inputFormat = AudioProcessor.AudioFormat.NOT_SET
+        inputEnded = false
         active = false
         sampleRate = 0
         channelCount = 0

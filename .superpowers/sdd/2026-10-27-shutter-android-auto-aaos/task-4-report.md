@@ -51,3 +51,42 @@ AAOS compatibility claim.
 Only Task 4 implementation/tests and this report are intended for the commit.
 No plan, ledger, review-package, WEB, ADMIN, Cloudflare, or R2 files were
 edited.
+
+## Fix round 1 — AudioProcessor EOS contract
+
+### Reviewer finding
+
+The initial analyzer returned `true` from `isEnded()` whenever its output
+buffer was empty, including before `queueEndOfStream()`. Media3's
+`AudioProcessingPipeline` requires EOS and drained output before treating an
+audio processor as ended; the premature result could stall the shared player
+and prevent analysis.
+
+### Fix
+
+- Added explicit `inputEnded` state to `NativeAudioAnalyzer`.
+- `queueEndOfStream()` sets it; `isEnded()` now requires `inputEnded` and a
+  drained output buffer.
+- `configure`, `flush`, and `reset` clear EOS state.
+- Added a regression covering pre-EOS false, pass-through, post-EOS true,
+  flush false, and reset false.
+
+### Fix-round commands and outputs
+
+- `JAVA_HOME=/tmp/jdk-21.0.8 PATH=/tmp/jdk-21.0.8/bin:$PATH JAVA_TOOL_OPTIONS=-Duser.home=/tmp/shutter-user ANDROID_HOME=/tmp/shutter-task1-sdk ANDROID_SDK_ROOT=/tmp/shutter-task1-sdk ANDROID_USER_HOME=/tmp/shutter-android-user GRADLE_USER_HOME=/tmp/shutter-task1-gradle ./gradlew :app:testPhoneAutoDebugUnitTest --tests com.trciesielski.shutter.audio.NativeAudioAnalyzerTest`
+  — PASS, 7 tests.
+- `JAVA_HOME=/tmp/jdk-21.0.8 PATH=/tmp/jdk-21.0.8/bin:$PATH JAVA_TOOL_OPTIONS=-Duser.home=/tmp/shutter-user ANDROID_HOME=/tmp/shutter-task1-sdk ANDROID_SDK_ROOT=/tmp/shutter-task1-sdk ANDROID_USER_HOME=/tmp/shutter-android-user GRADLE_USER_HOME=/tmp/shutter-task1-gradle ./gradlew :app:testPhoneAutoDebugUnitTest --tests com.trciesielski.shutter.audio.NativeAudioAnalyzerTest :app:compilePhoneAutoDebugKotlin :app:compileAutomotiveDebugKotlin`
+  — BUILD SUCCESSFUL; focused test task and both flavor Kotlin compile tasks
+  completed.
+- `node --test test/native-analysis.test.js` — PASS, 3 tests.
+- `npm test` — PASS, 74 tests.
+- `npm run build` — PASS.
+- `npm run build:mobile` — PASS.
+- `git diff --check` — PASS.
+
+The commands used the available `/tmp/jdk-21.0.8` JDK and cached Android SDK.
+No Android device/emulator or Android Auto/AAOS host was available, so this
+fix round adds no device compatibility claim. The existing full Robolectric
+suite remains subject to the previously documented uncached
+`android-all-instrumented:16-robolectric-13921718-i7` / `repo1.maven.org` DNS
+blocker.

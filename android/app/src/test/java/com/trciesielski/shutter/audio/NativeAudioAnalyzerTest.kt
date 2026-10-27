@@ -79,6 +79,30 @@ class NativeAudioAnalyzerTest {
     }
 
     @Test
+    fun isEndedFollowsMedia3EndOfStreamContract() {
+        val analyzer = NativeAudioAnalyzer({}, windowSizeSamples = 8, minFrameIntervalMs = 0)
+        analyzer.configure(AudioProcessor.AudioFormat(8_000, 1, C.ENCODING_PCM_16BIT))
+        assertFalse(analyzer.isEnded)
+
+        val input = shortBuffer(shortArrayOf(1_000, -1_000))
+        val expected = input.duplicate()
+        analyzer.queueInput(input)
+        assertFalse(analyzer.isEnded)
+        assertArrayEquals(bytes(expected), bytes(analyzer.output))
+        assertFalse(analyzer.isEnded)
+
+        analyzer.queueEndOfStream()
+        assertTrue(analyzer.isEnded)
+
+        analyzer.flush()
+        assertFalse(analyzer.isEnded)
+        analyzer.queueEndOfStream()
+        assertTrue(analyzer.isEnded)
+        analyzer.reset()
+        assertFalse(analyzer.isEnded)
+    }
+
+    @Test
     fun framesAreThrottledAndTimestampsRemainMonotonic() {
         val frames = mutableListOf<NativeAudioAnalysisFrame>()
         var now = 100L
