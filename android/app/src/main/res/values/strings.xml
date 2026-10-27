@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Shutter</string>
+    <string name="title_activity_main">Shutter</string>
+    <string name="package_name">com.trciesielski.shutter</string>
+    <string name="custom_url_scheme">com.trciesielski.shutter</string>
+</resources>

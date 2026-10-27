@@ -6,3 +6,7 @@ test-results/
 playwright-report/
 .env.local
 .env.*.local
+/android/.gradle/
+/android/local.properties
+/android/build/
+/android/app/build/

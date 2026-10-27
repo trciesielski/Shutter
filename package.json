@@ -8,16 +8,22 @@
     "dev:mobile": "vite --host 0.0.0.0 --mode mobile",
     "build": "vite build",
     "build:mobile": "vite build --mode mobile --outDir dist-mobile",
+    "android:sync": "npm run build && cap sync android",
+    "android:assembleDebug": "npm run android:sync && cd android && ./gradlew :app:assembleDebug",
+    "android:test": "npm run android:sync && cd android && ./gradlew :app:testDebugUnitTest",
     "preview": "vite preview",
     "test": "node --test test/*.test.js",
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.5.3",
     "@playwright/test": "^1.56.1",
     "vite": "^6.1.0",
     "wrangler": "^3.114.17"
