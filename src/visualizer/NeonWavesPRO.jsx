@@ -20,7 +20,7 @@ void main(){
  vec2 p=(gl_FragCoord.xy-u_resolution*.5)/max(1.,min(u_resolution.x,u_resolution.y));
  float t=u_time*u_playing,amp=u_intensity;
  vec3 cyan=vec3(.025,.87,1.),pink=vec3(1.,.075,.72),orange=vec3(1.,.38,.12),violet=vec3(.52,.16,1.);
- vec3 c=vec3(.003,.006,.028);
+ vec3 c=vec3(0.);
  c+=violet*glow(length(p),.60)*(.025+.045*u_bass);
  // Multiple fine intertwined ribbons: vocal body changes shape; mids drive motion.
  for(int i=0;i<15;i++){
@@ -61,14 +61,14 @@ void main(){
  c+=mix(cyan,pink,seed)*spark*(.07+.38*u_high+.75*u_transient[11])*amp;
  c*=1.-smoothstep(.67,1.02,length(p))*.8;
  c=1.-exp(-c*1.25);
- fragColor=vec4(c,1.);
+ fragColor=vec4(c,max(c.r,max(c.g,c.b)));
 }`;
 const compile=(gl,type,source)=>{const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)){const message=gl.getShaderInfoLog(shader);gl.deleteShader(shader);throw Error(message)}return shader};
 export default function NeonWavesPRO({bins=[],playing=false,intensity=65,onUnavailable,background=false,reduced=false}){
  const canvas=useRef(null),inputs=useRef({});inputs.current={bins,playing,intensity,background,reduced};
  useEffect(()=>{
   const el=canvas.current;if(!el)return;
-  const gl=el.getContext('webgl2',{alpha:true,antialias:false,powerPreference:'low-power'});
+  const gl=el.getContext('webgl2',{alpha:true,premultipliedAlpha:true,antialias:false,powerPreference:'low-power'});
   if(!gl){onUnavailable?.();return}
   let vert,frag,program,buffer,raf=0,disposed=false,frame=0,last=0;
   try{
