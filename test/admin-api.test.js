@@ -325,7 +325,8 @@ test('upload sessions are bound to the administrator who created them',async()=>
 
 test('shareUrl edge cases: bare scheme and non-URL strings are rejected',async()=>{
  const cur=(await call('GET','catalog')).body;
- for(const shareUrl of ['https://','https:/x','notaurl','HTTPS://ok.example/Ścieżka?q=żółć']){
+ const long='https://ok.example/'+('a'.repeat(2100));
+ for(const shareUrl of ['https://','https:/x','notaurl',long,'HTTPS://ok.example/Ścieżka?q=żółć']){
   const tracks=cur.catalog.tracks.map((t,i)=>i===0?{...t,shareUrl}:t);
   const r=await call('PUT','catalog',{catalog:{...cur.catalog,tracks},etag:cur.etag});
   if(shareUrl==='HTTPS://ok.example/Ścieżka?q=żółć'){assert.equal(r.status,200,shareUrl);assert.equal(r.body.catalog.tracks[0].shareUrl,shareUrl)}

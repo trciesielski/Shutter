@@ -74,9 +74,9 @@ export function validateAdminCatalog(data){
   // shareUrl is part of the public catalog contract (exposed as publicUrl); validate it the same way
   // and carry it through so publishing never strips existing share links.
   if(t.shareUrl!==undefined&&t.shareUrl!==null&&t.shareUrl!==''){
-   const url=typeof t.shareUrl==='string'?cleanText(t.shareUrl,2048):null;
+   const url=typeof t.shareUrl==='string'&&t.shareUrl.length<=2048?cleanText(t.shareUrl,2048):null;
    let valid=false;
-   if(url&&/^https:\/\//i.test(url)&&url.length<=2048){try{valid=new URL(url).protocol==='https:'}catch{}}
+   if(url&&/^https:\/\//i.test(url)){try{valid=new URL(url).protocol==='https:'}catch{}}
    if(valid)out.shareUrl=url;else err(index,id,'shareUrl','invalid_share_url');
   }
   if(t.addedAt!==undefined&&t.addedAt!==null){if(typeof t.addedAt==='string'&&!Number.isNaN(Date.parse(t.addedAt))&&t.addedAt.length<=40)out.addedAt=t.addedAt;else err(index,id,'addedAt','invalid_date')}
