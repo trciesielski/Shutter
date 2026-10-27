@@ -16,6 +16,15 @@ def catalogUrl = (catalogOverride
 android {
     namespace = "com.trciesielski.shutter"
     compileSdk = rootProject.ext.compileSdkVersion
+    flavorDimensions += "platform"
+    productFlavors {
+        phoneAuto {
+            dimension "platform"
+        }
+        automotive {
+            dimension "platform"
+        }
+    }
     defaultConfig {
         applicationId "com.trciesielski.shutter"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -48,6 +57,7 @@ android {
         unitTests.all {
             systemProperty 'shutter.musicBaseOverride', musicBaseOverride ?: ''
             systemProperty 'shutter.catalogOverride', catalogOverride ?: ''
+            systemProperty 'shutter.androidAppDir', projectDir.absolutePath
         }
     }
 }
