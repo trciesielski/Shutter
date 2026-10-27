@@ -7,6 +7,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 data class MigrationReport(val completed: Boolean, val diagnostics: List<String>, val importedPlaylists: Int, val importedHistory: Int)
+private class MigrationTooLarge(message: String) : IllegalArgumentException(message)
 
 /** Parse before writing, then apply all accepted scalar state and the marker in one Room transaction. */
 class WebStorageMigration(private val db: ShutterDatabase) {
@@ -15,27 +16,34 @@ class WebStorageMigration(private val db: ShutterDatabase) {
         val diagnostics = mutableListOf<String>()
         fun <T> read(key: String, fallback: T, decode: (String) -> T): T {
             val raw = payload[key] ?: return fallback
-            if (raw.length > 2_000_000) { diagnostics += "$key: too large"; return fallback }
-            return try { decode(raw) } catch (_: Exception) { diagnostics += "$key: malformed JSON or fields"; fallback }
+            if (raw.length > 2_000_000) throw MigrationTooLarge("$key: too large; migration not committed")
+            return try { decode(raw) }
+            catch (error: MigrationTooLarge) { throw error }
+            catch (_: Exception) { diagnostics += "$key: malformed JSON or fields"; fallback }
         }
         val playlists = read("shutter-user-playlists-v1", emptyList<Triple<String, String, List<String>>>()) { raw ->
             val arr = JSONArray(raw)
-            (0 until minOf(arr.length(), 500)).mapNotNull { i ->
+            if (arr.length() > 500) throw MigrationTooLarge("shutter-user-playlists-v1: more than 500 playlists; migration not committed")
+            (0 until arr.length()).mapNotNull { i ->
                 val item = arr.optJSONObject(i)
                 val id = item?.opt("id") as? String
                 val name = item?.opt("name") as? String
                 val tracks = item?.optJSONArray("tracks")
+                if (tracks != null && tracks.length() > 5000) throw MigrationTooLarge("shutter-user-playlists-v1[$i]: more than 5000 tracks; migration not committed")
                 if (id.isNullOrBlank() || id.length > 128 || name.isNullOrBlank() || tracks == null) {
                     diagnostics += "shutter-user-playlists-v1[$i]: invalid playlist"; null
-                } else Triple(id, name.take(200), (0 until minOf(tracks.length(), 5000)).mapNotNull { j ->
+                } else {
+                    Triple(id, name.take(200), (0 until tracks.length()).mapNotNull { j ->
                     (tracks.opt(j) as? String)?.takeIf { it.isNotBlank() && it.length <= 256 }
                         ?: run { diagnostics += "shutter-user-playlists-v1[$i].tracks[$j]: invalid ID"; null }
-                }.distinct())
+                    }.distinct())
+                }
             }
         }
         val favorites = read("shutter-favorites", emptyList<String>()) { raw ->
             val arr = JSONArray(raw)
-            (0 until minOf(arr.length(), 5000)).mapNotNull { (arr.opt(it) as? String)?.takeIf { id -> id.isNotBlank() && id.length <= 256 } }.distinct()
+            if (arr.length() > 5000) throw MigrationTooLarge("shutter-favorites: more than 5000 tracks; migration not committed")
+            (0 until arr.length()).mapNotNull { (arr.opt(it) as? String)?.takeIf { id -> id.isNotBlank() && id.length <= 256 } }.distinct()
         }
         val ratings = read("shutter-track-preferences-v1", emptyMap<String, String>()) { raw ->
             val obj = JSONObject(raw)
@@ -45,7 +53,8 @@ class WebStorageMigration(private val db: ShutterDatabase) {
         }
         val history = read("shutter-listening-history-v1", emptyList<Pair<String, Long>>()) { raw ->
             val arr = JSONArray(raw)
-            (0 until minOf(arr.length(), 500)).mapNotNull { i ->
+            if (arr.length() > 500) throw MigrationTooLarge("shutter-listening-history-v1: more than 500 rows; migration not committed")
+            (0 until arr.length()).mapNotNull { i ->
                 val row = arr.optJSONObject(i)
                 val id = row?.opt("id") as? String
                 val at = row?.opt("at") as? Number
@@ -73,7 +82,7 @@ class WebStorageMigration(private val db: ShutterDatabase) {
                 db.playlistDao().upsert(existing[id] ?: PlaylistEntity(id, name, count))
                 db.playlistDao().clearEntries(id)
                 db.playlistDao().insertEntries(merged.mapIndexed { index, trackId ->
-                    PlaylistEntryEntity(id, index, trackId, previous.any { it.trackId == trackId && it.orphaned } || trackId !in knownTracks && (trackId.startsWith("blob:") || trackId.startsWith("local:")))
+                    PlaylistEntryEntity(id, index, trackId, previous.any { it.trackId == trackId && it.orphaned } || trackId !in knownTracks && (trackId.startsWith("blob:") || trackId.startsWith("local:") || Regex("^local-[0-9]+-[0-9]+$").matches(trackId)))
                 })
                 count++
             }

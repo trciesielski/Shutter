@@ -6,7 +6,10 @@ import android.content.Intent
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaBrowser
+import androidx.media3.session.MediaController
 import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.LibraryResult
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionToken
 import androidx.room.Room
 import com.getcapacitor.JSArray
@@ -33,7 +36,8 @@ class ShutterMediaPlugin : Plugin() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val ordering = PluginEventBridge()
     private var browser: MediaBrowser? = null
-    private var connecting: ListenableFuture<MediaBrowser>? = null
+    private val connection = ControllerConnection<MediaBrowser>()
+    private var pendingMutation: CompletableDeferred<Unit>? = null
     private var database: ShutterDatabase? = null
     private val db: ShutterDatabase get() = database ?: Room.databaseBuilder(context.applicationContext, ShutterDatabase::class.java, "shutter-library.db").build().also { database = it }
     private val listener = object : Player.Listener {
@@ -43,6 +47,18 @@ class ShutterMediaPlugin : Plugin() {
         }
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             emit("audioFocusChanged", JSObject().put("playWhenReady", playWhenReady).put("reason", reason))
+        }
+    }
+    private val sessionListener = object : MediaBrowser.Listener {
+        override fun onError(controller: MediaController, error: SessionError) {
+            val failure = IllegalStateException("Media session rejected command: ${error.code} ${error.message}")
+            pendingMutation?.completeExceptionally(failure)
+            emit("error", JSObject().put("message", failure.message))
+        }
+        override fun onDisconnected(controller: MediaController) {
+            pendingMutation?.completeExceptionally(IllegalStateException("Media session disconnected"))
+            if (browser === controller) browser = null
+            connection.cancel()
         }
     }
 
@@ -60,7 +76,7 @@ class ShutterMediaPlugin : Plugin() {
         browser?.removeListener(listener)
         browser?.release()
         browser = null
-        connecting?.cancel(true)
+        connection.cancel()
         database?.close()
         database = null
         super.handleOnDestroy()
@@ -76,10 +92,11 @@ class ShutterMediaPlugin : Plugin() {
 
     private suspend fun controller(): MediaBrowser {
         browser?.let { return it }
-        val future = connecting ?: MediaBrowser.Builder(context,
+        return connection.await({ MediaBrowser.Builder(context,
             SessionToken(context, ComponentName(context, ShutterMediaLibraryService::class.java)))
-            .buildAsync().also { connecting = it }
-        return await(future).also { it.addListener(listener); browser = it; connecting = null }
+            .setListener(sessionListener).buildAsync() }) { future ->
+            await(future).also { it.addListener(listener); browser = it }
+        }
     }
 
     private fun execute(call: PluginCall, block: suspend () -> JSObject) {
@@ -93,12 +110,14 @@ class ShutterMediaPlugin : Plugin() {
     }
 
     private fun emit(name: String, data: JSObject) {
-        data.put("schemaVersion", PluginPayloads.VERSION).put("revision", ordering.nextRevision()).put("timestampMs", System.currentTimeMillis())
+        data.put("schemaVersion", PluginPayloads.VERSION).put("revision", ordering.nextRevision())
+            .put("timestampMs", System.currentTimeMillis()).put("eventType", name)
         notifyListeners(name, data)
     }
 
     private fun state(player: Player): JSObject = JSObject()
         .put("schemaVersion", PluginPayloads.VERSION)
+        .put("eventType", "playbackState")
         .put("revision", ordering.nextRevision())
         .put("timestampMs", System.currentTimeMillis())
         .put("mediaId", player.currentMediaItem?.mediaId)
@@ -136,11 +155,17 @@ class ShutterMediaPlugin : Plugin() {
 
     @PluginMethod fun connect(call: PluginCall) = execute(call) {
         val player = controller()
-        val snapshot = state(player)
         emit("analysisFrame", JSObject().put("bands", JSONArray()).put("signalStatus", "unavailable"))
-        snapshot
+        state(player)
     }
-    @PluginMethod fun disconnect(call: PluginCall) = execute(call) { browser?.removeListener(listener); browser?.release(); browser = null; JSObject().put("schemaVersion", 1) }
+    @PluginMethod fun disconnect(call: PluginCall) = execute(call) {
+        pendingMutation?.completeExceptionally(IllegalStateException("Disconnected"))
+        connection.cancel()
+        browser?.removeListener(listener)
+        browser?.release()
+        browser = null
+        JSObject().put("schemaVersion", 1)
+    }
     @PluginMethod fun play(call: PluginCall) = command(call) { play() }
     @PluginMethod fun pause(call: PluginCall) = command(call) { pause() }
     @PluginMethod fun toggle(call: PluginCall) = command(call) { if (isPlaying) pause() else play() }
@@ -153,21 +178,59 @@ class ShutterMediaPlugin : Plugin() {
     @PluginMethod fun setRepeat(call: PluginCall) = command(call) { repeatMode = PluginPayloads.repeat(call.data) }
     private fun command(call: PluginCall, action: MediaBrowser.() -> Unit) = execute(call) { controller().let { it.action(); state(it) } }
 
+    private suspend fun lookup(player: MediaBrowser, id: String): MediaItem? {
+        val result = await(player.getItem(id))
+        return when (result.resultCode) {
+            LibraryResult.RESULT_SUCCESS -> result.value
+            SessionError.ERROR_BAD_VALUE -> null
+            else -> throw IllegalStateException("Media lookup failed: ${result.resultCode}")
+        }
+    }
+
+    private fun queueIds(player: MediaBrowser): List<String> = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
+
+    private suspend fun awaitMutation(player: MediaBrowser, matches: () -> Boolean, mutate: () -> Unit) {
+        check(pendingMutation == null) { "Another media command is pending" }
+        val pending = CompletableDeferred<Unit>()
+        pendingMutation = pending
+        val observer = object : Player.Listener {
+            override fun onEvents(player: Player, events: Player.Events) {
+                if (matches()) pending.complete(Unit)
+            }
+        }
+        player.addListener(observer)
+        try {
+            mutate()
+            if (matches()) pending.complete(Unit)
+            withTimeout(10_000) { pending.await() }
+        } finally {
+            player.removeListener(observer)
+            if (pendingMutation === pending) pendingMutation = null
+        }
+    }
+
     @PluginMethod fun setQueue(call: PluginCall) = execute(call) {
         val (ids, index) = PluginPayloads.queue(call.data)
         val player = controller()
-        // onSetMediaItems expands a single ID into its source browse queue; explicit queues use onAddMediaItems.
-        player.clearMediaItems()
-        player.addMediaItems(ids.map { MediaItem.Builder().setMediaId(it).build() })
-        player.seekTo(index, 0)
-        player.prepare()
+        PluginPayloads.replaceQueue(ids, { id -> lookup(player, id) }) { resolved ->
+            awaitMutation(player, { queueIds(player) == ids && player.currentMediaItemIndex == index }) {
+                // replaceMediaItems uses the session's onAddMediaItems path, including for a one-track queue.
+                player.replaceMediaItems(0, player.mediaItemCount, resolved)
+                player.seekTo(index, 0)
+                player.prepare()
+            }
+        }
         state(player)
     }
     @PluginMethod fun playItem(call: PluginCall) = execute(call) {
+        val id = PluginPayloads.requiredId(call.data, "trackId")
         val player = controller()
-        player.setMediaItem(MediaItem.Builder().setMediaId(PluginPayloads.requiredId(call.data, "trackId")).build())
-        player.prepare()
-        player.play()
+        PluginPayloads.resolvePlayable(listOf(id)) { lookup(player, it) }
+        awaitMutation(player, { player.currentMediaItem?.mediaId == id }) {
+            player.setMediaItem(MediaItem.Builder().setMediaId(id).build())
+            player.prepare()
+            player.play()
+        }
         state(player)
     }
 

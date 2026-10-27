@@ -15,7 +15,7 @@ export function createNativeState(){
     get snapshot(){return snapshot},
     get revision(){return revision},
     apply(event){
-      if(event?.schemaVersion!==1||!Number.isSafeInteger(event.revision)||event.revision<revision)return false;
+      if(event?.schemaVersion!==1||(event.eventType&&event.eventType!=='playbackState')||!Number.isSafeInteger(event.revision)||event.revision<=revision)return false;
       revision=event.revision;
       snapshot={...snapshot,...event};
       return true;

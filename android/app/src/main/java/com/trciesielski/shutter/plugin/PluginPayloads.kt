@@ -1,5 +1,6 @@
 package com.trciesielski.shutter.plugin
 
+import androidx.media3.common.MediaItem
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -30,4 +31,11 @@ object PluginPayloads {
     fun requiredId(value: JSONObject, key: String): String = (value.opt(key) as? String)?.takeIf { it.isNotBlank() && it.length <= 256 }
         ?: throw IllegalArgumentException("Invalid $key")
     fun enabled(value: JSONObject): Boolean = value.opt("enabled") as? Boolean ?: throw IllegalArgumentException("enabled must be boolean")
+    suspend fun resolvePlayable(ids: List<String>, getItem: suspend (String) -> MediaItem?): List<MediaItem> = ids.map { id ->
+        getItem(id)?.takeIf { it.mediaMetadata.isPlayable == true }
+            ?: throw IllegalArgumentException("Unknown or unplayable media ID: $id")
+    }
+    suspend fun replaceQueue(ids: List<String>, getItem: suspend (String) -> MediaItem?, replace: suspend (List<MediaItem>) -> Unit) {
+        replace(resolvePlayable(ids, getItem))
+    }
 }
