@@ -31,7 +31,7 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true,signa
  const [levels,setLevels]=useState({bass:0,mids:0,treble:0});
  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(settings))}catch{}},[settings]);
  useEffect(()=>{const mq=window.matchMedia('(prefers-reduced-motion: reduce)');const update=()=>setReduced(mq.matches);mq.addEventListener?.('change',update);return()=>mq.removeEventListener?.('change',update)},[]);
- useEffect(()=>{if(!song?.coverBlob){setCoverUrl(null);return}const u=URL.createObjectURL(song.coverBlob);setCoverUrl(u);return()=>URL.revokeObjectURL(u)},[song?.coverBlob]);
+ useEffect(()=>{if(!song?.coverBlob){setCoverUrl(song?.coverUrl||null);return}const u=URL.createObjectURL(song.coverBlob);setCoverUrl(u);return()=>URL.revokeObjectURL(u)},[song?.coverBlob,song?.coverUrl]);
  useEffect(()=>{document.documentElement.classList.toggle('visualizer-backdrop-active',maximized);const onKey=e=>{if(e.key==='Escape')setMaximized(false)};window.addEventListener('keydown',onKey);return()=>{document.documentElement.classList.remove('visualizer-backdrop-active');window.removeEventListener('keydown',onKey)}},[maximized]);
  useEffect(()=>{document.documentElement.classList.toggle('shutter-visual-focus',focus);return()=>document.documentElement.classList.remove('shutter-visual-focus')},[focus]);
  const mode=resolveVisualMode(settings.mode,!!coverUrl,reduced);
@@ -77,7 +77,7 @@ export default function MusicVisualizer({song,playing,bins=[],visible=true,signa
  },[mode,playing,reduced,maximized,diagnostic]);
  const scene=<div className={'visualizer-scene'+(maximized?' visualizer-scene-backdrop':'')}>
   {mode==='minimal'?(webglFailed?<MinimalNeonSpectrum bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized}/>:<MinimalNeonWebGL bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>):mode==='sonic'?<SonicLines bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized}/>:mode==='neon-waves'?<SonicLines bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized}/>:mode==='waves'&&!webglFailed?<SonicWaves bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>:mode==='shards'&&!webglFailed?<NeonPulse360 bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>:neon?<NeonSpectrum bins={bins} playing={playing} intensity={settings.intensity} reduced={reduced} background={maximized} onUnavailable={()=>setWebglFailed(true)}/>:<canvas ref={canvas} aria-hidden="true"/>}
-  {mode==='cover'&&<div className="visualizer-cover">{coverUrl?<img src={coverUrl} alt="Okładka aktualnego utworu"/>:<div className="visualizer-fallback" aria-hidden="true"><strong>♪</strong></div>}</div>}
+  {mode==='cover'&&<div className="visualizer-cover">{coverUrl?<img src={coverUrl} alt="Okładka aktualnego utworu" onError={()=>setCoverUrl(null)}/>:<div className="visualizer-fallback" aria-hidden="true"><strong>♪</strong></div>}</div>}
   <div className="visualizer-vignette"/>
  </div>;
  return <section className={'music-visualizer mode-'+mode+(maximized?' is-maximized':'')+(!visible?' is-away':'')} aria-label="Wizualizacja odtwarzanego utworu">

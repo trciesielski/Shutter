@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "dev:mobile": "vite --host 0.0.0.0 --mode mobile",
     "build": "vite build",
+    "build:mobile": "vite build --mode mobile --outDir dist-mobile",
     "preview": "vite preview",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
@@ -15,6 +18,8 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "vite": "^6.1.0"
+    "@playwright/test": "^1.56.1",
+    "vite": "^6.1.0",
+    "wrangler": "^3.114.17"
   }
 }

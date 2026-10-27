@@ -23,7 +23,7 @@ jobs:
       - name: Audio regression tests
         run: npm test
       - name: Build preview
-        run: npm run build
+        run: npm run build -- --base=/Shutter/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

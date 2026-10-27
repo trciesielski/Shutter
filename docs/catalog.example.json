@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "title": "SHUTTER",
+  "updatedAt": "2026-10-27T00:00:00Z",
+  "tracks": [
+    {
+      "id": "example-001",
+      "title": "Przykładowy utwór",
+      "artist": "Przykładowy wykonawca",
+      "album": "Przykładowy album",
+      "duration": 215.4,
+      "audio": "tracks/example-001.mp3",
+      "cover": "covers/example-001.jpg",
+      "genre": "Electronic",
+      "year": 2026,
+      "order": 1,
+      "lyrics": "Pierwsza linijka\nDruga linijka",
+      "metadata": { "bpm": 120, "label": "FORM" }
+    },
+    {
+      "id": "example-002",
+      "title": "Utwór bez okładki",
+      "artist": "Przykładowy wykonawca",
+      "audio": "tracks/example-002.mp3",
+      "order": 2
+    }
+  ]
+}
