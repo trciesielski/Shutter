@@ -5,7 +5,6 @@ import {migrateLocalStorage} from '../native/nativeState.js';
 import {platformCapabilities} from '../platform.js';
 
 const nativeCapabilities={...platformCapabilities('mobile'),nativePlayback:true,nativeAnalysis:false};
-const nativeEq={available:false,ready:false,bins:Array(32).fill(0),signalStatus:'unavailable',signalDebug:null};
 
 export async function startNativePlayback(adapter,media,storage,onState){
  const cleanup=await adapter.connect(onState);
@@ -38,7 +37,7 @@ export function useNativeAudioEngine(){
  },[]);
  const invoke=name=>(...args)=>adapter.current[name](...args).catch(e=>setStartupError(e.message));
  const reloadCatalog=async()=>{try{const result=await resumeNativePlayback(boot.current,adapter.current,shutterMedia,globalThis.localStorage,setSnapshot);boot.current=result;setStartupError(result.error);setNativeReady(v=>v+1)}catch(e){setStartupError(e.message)}};
- return {...snapshot,eq:nativeEq,capabilities:nativeCapabilities,error:startupError||snapshot.error,nativeReady,reloadCatalog,
+ return {...snapshot,eq:snapshot.eq,capabilities:{...nativeCapabilities,nativeAnalysis:Boolean(snapshot.eq?.available)},error:startupError||snapshot.error,nativeReady,reloadCatalog,
   importFiles:invoke('importFiles'),remove:invoke('remove'),select:invoke('select'),toggle:invoke('toggle'),stop:invoke('stop'),seek:invoke('seek'),setGain:invoke('setGain'),next:invoke('next'),prev:invoke('prev'),loadQueue:invoke('loadQueue'),playQueue:invoke('playQueue'),move:invoke('move'),addNext:invoke('addNext'),rateTrack:invoke('rateTrack'),toggleShuffle:invoke('toggleShuffle'),cycleRepeat:invoke('cycleRepeat'),
   transition:0,setTransition:()=>{},history:[],historyStats:[],clearPlays:()=>{}};
 }

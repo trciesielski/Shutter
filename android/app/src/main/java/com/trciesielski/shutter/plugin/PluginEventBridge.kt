@@ -1,6 +1,12 @@
 package com.trciesielski.shutter.plugin
 
+import com.trciesielski.shutter.audio.NativeAudioAnalysisBus
 import com.google.common.util.concurrent.ListenableFuture
+
+/** The service's audio sink and the Capacitor plugin share this process-local bus. */
+object NativeAudioAnalysisBridge {
+    val bus = NativeAudioAnalysisBus()
+}
 
 /** Shared ordering gate for snapshots and event delivery. */
 class PluginEventBridge {

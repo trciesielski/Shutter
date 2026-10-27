@@ -40,6 +40,7 @@ import kotlin.coroutines.resumeWithException
 class ShutterMediaPlugin : Plugin() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val ordering = PluginEventBridge()
+    private var analysisSubscription: AutoCloseable? = null
     private var browser: MediaBrowser? = null
     private val connection = ControllerConnection<MediaBrowser>()
     private var pendingMutation: CompletableDeferred<Unit>? = null
@@ -68,6 +69,11 @@ class ShutterMediaPlugin : Plugin() {
     }
 
     override fun load() {
+        analysisSubscription = NativeAudioAnalysisBridge.bus.subscribe { frame ->
+            scope.launch(Dispatchers.Main.immediate) {
+                if (isActive) emit("analysisFrame", PluginPayloads.analysisFrame(frame), frame.timestampMs)
+            }
+        }
         scope.launch {
             while (isActive) {
                 delay(1000)
@@ -77,6 +83,8 @@ class ShutterMediaPlugin : Plugin() {
     }
 
     override fun handleOnDestroy() {
+        analysisSubscription?.close()
+        analysisSubscription = null
         scope.cancel()
         browser?.removeListener(listener)
         browser?.release()
@@ -114,9 +122,9 @@ class ShutterMediaPlugin : Plugin() {
         }
     }
 
-    private fun emit(name: String, data: JSObject) {
+    private fun emit(name: String, data: JSObject, timestampMs: Long = System.currentTimeMillis()) {
         data.put("schemaVersion", PluginPayloads.VERSION).put("revision", ordering.nextRevision())
-            .put("timestampMs", System.currentTimeMillis()).put("eventType", name)
+            .put("timestampMs", timestampMs).put("eventType", name)
         notifyListeners(name, data)
     }
 

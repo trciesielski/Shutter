@@ -2,10 +2,11 @@ import {createNativeState} from '../native/nativeState.js';
 import {SHUTTER_MEDIA_EVENTS} from '../native/shutterMedia.js';
 
 const track=t=>({id:t.id,source:t.source,title:t.title||'',artist:t.artist||'',album:t.album||'',durationMs:t.durationMs,duration:Math.max(0,(t.durationMs||0)/1000),artworkUri:t.artworkUri,uri:t.uri,coverUrl:t.artworkUri||null,url:t.uri});
-const initial=()=>({files:[],ratings:{},index:0,state:'idle',seconds:0,duration:0,volume:.7,shuffle:false,repeat:'off',queueIds:[],catalog:{status:'loading',title:null,skipped:[],error:null},error:'',signalStatus:'unavailable'});
+const emptyEq=()=>({available:false,ready:false,bins:Array(32).fill(0),signalStatus:'unavailable',signalDebug:null});
+const initial=()=>({files:[],ratings:{},index:0,state:'idle',seconds:0,duration:0,volume:.7,shuffle:false,repeat:'off',queueIds:[],catalog:{status:'loading',title:null,skipped:[],error:null},error:'',signalStatus:'unavailable',signalDebug:null,eq:emptyEq()});
 
 export function createNativePlaybackAdapter(media){
- let state=createNativeState(),snapshot=initial(),notify=()=>{},cleanup=null,connected=false,hydrated=false,refreshing=false,queueTail=Promise.resolve();
+ let state=createNativeState(),snapshot=initial(),notify=()=>{},cleanup=null,connected=false,hydrated=false,refreshing=false,queueTail=Promise.resolve(),analysisRevision=-1;
  const update=patch=>{snapshot={...snapshot,...patch};notify(snapshot)};
  const indexFor=(id,files=snapshot.files)=>Math.max(0,files.findIndex(x=>x.id===id));
  const applyState=value=>{
@@ -18,13 +19,21 @@ export function createNativePlaybackAdapter(media){
   if(name==='position'){if(value.mediaId===snapshot.mediaId)update({seconds:Math.max(0,(value.positionMs||0)/1000),duration:value.durationMs>=0?value.durationMs/1000:snapshot.duration});return}
   if(name==='queueChanged'){if(Array.isArray(value.queue))update({queueIds:value.queue});return}
   if(name==='metadataChanged'){if(value.mediaId)update({mediaId:value.mediaId,index:indexFor(value.mediaId)});return}
-  if(name==='analysisFrame'){update({signalStatus:value.signalStatus||'unavailable'});return}
+  if(name==='analysisFrame'){
+   if(Number.isSafeInteger(value?.revision)&&value.revision<=analysisRevision)return;
+   if(Number.isSafeInteger(value?.revision))analysisRevision=value.revision;
+   const signalStatus=value?.signalStatus||'unavailable',measured=signalStatus!=='unavailable'&&Array.isArray(value?.bands)&&value.bands.length===32;
+   const bins=measured?value.bands.map(n=>Math.max(0,Math.min(100,Math.round(Number(n)||0)))):Array(32).fill(0);
+   const signalDebug=value?.signalDebug&&typeof value.signalDebug==='object'?value.signalDebug:null;
+   update({signalStatus,signalDebug,eq:{available:measured,ready:measured,bins,signalStatus,signalDebug}});
+   return;
+  }
   if(name==='error'){update({error:value.message||'Native playback error'});return}
   if((name==='catalogChanged'||name==='libraryChanged')&&hydrated&&!refreshing)refreshLibrary().catch(e=>update({error:e.message}));
  };
  async function connect(listener){
   if(cleanup)await cleanup();
-  notify=listener;state=createNativeState();connected=true;hydrated=false;
+  notify=listener;state=createNativeState();connected=true;hydrated=false;analysisRevision=-1;
   const handles=[];
   try{
    for(const name of SHUTTER_MEDIA_EVENTS)handles.push(await media.addListener(name,value=>{if(connected)onEvent(name,value)}));

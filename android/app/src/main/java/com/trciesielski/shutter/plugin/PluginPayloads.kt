@@ -1,6 +1,8 @@
 package com.trciesielski.shutter.plugin
 
 import androidx.media3.common.MediaItem
+import com.getcapacitor.JSObject
+import com.trciesielski.shutter.audio.NativeAudioAnalysisFrame
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -38,4 +40,15 @@ object PluginPayloads {
     suspend fun replaceQueue(ids: List<String>, getItem: suspend (String) -> MediaItem?, replace: suspend (List<MediaItem>) -> Unit) {
         replace(resolvePlayable(ids, getItem))
     }
+    fun analysisFrame(frame: NativeAudioAnalysisFrame): JSObject = JSObject()
+        .put("bands", JSONArray(frame.bands))
+        .put("signalStatus", frame.signalStatus)
+        .put("analysisRevision", frame.revision)
+        .put("signalDebug", JSObject()
+            .put("context", "media3-pcm")
+            .put("sampleRate", frame.sampleRate)
+            .put("channels", frame.channelCount)
+            .put("rms", frame.rms)
+            .put("peak", frame.peak)
+            .put("maxBand", frame.bands.maxOrNull() ?: 0))
 }
