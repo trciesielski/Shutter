@@ -44,7 +44,7 @@ void main(){
  float vocalAttack=u_voiceAttack;
  float movement=u_flux;
  vec3 magenta=vec3(1.,.08,.69),cyan=vec3(.035,.72,1.),purple=vec3(.52,.20,1.);
- vec3 c=vec3(.002,.004,.021);
+ vec3 c=vec3(0.);
  // Dark transparent atmosphere with bass-triggered illumination.
  c+=purple*(.018+.080*bass)*exp(-radius*4.)*power;
  c+=cyan*(.010+.036*mid)*exp(-length(uv-vec2(-.25,.17))*4.)*power;
@@ -135,14 +135,14 @@ void main(){
  c+=purple*bloom*exp(-pow((radius-.36)/.19,2.))*.21;
  c+=cyan*(hi*.16+mid*.035)*exp(-pow((radius-.48)/.12,2.))*power;
  c=1.-exp(-c*1.18);
- fragColor=vec4(c,1.);
+ fragColor=vec4(c,max(c.r,max(c.g,c.b)));
 }`;
 const compile=(gl,type,source)=>{const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)){const message=gl.getShaderInfoLog(shader);gl.deleteShader(shader);throw Error(message)}return shader};
 export default function NeonSpectrum({bins=[],playing=false,intensity=65,onUnavailable,background=false,reduced=false}){
  const canvas=useRef(null),inputs=useRef({});inputs.current={bins,playing,intensity,background,reduced};
  useEffect(()=>{
   const el=canvas.current;if(!el)return;
-  const gl=el.getContext('webgl2',{alpha:true,antialias:false,powerPreference:'low-power'});
+  const gl=el.getContext('webgl2',{alpha:true,premultipliedAlpha:true,antialias:false,powerPreference:'low-power'});
   if(!gl){onUnavailable?.();return}
   let vert,frag,program,buffer,raf=0,disposed=false,frame=0,last=0;
   try{

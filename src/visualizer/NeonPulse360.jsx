@@ -25,7 +25,7 @@ void main(){
  float t=u_time*u_playing,amp=u_intensity,beat=u_beat;
  vec3 pink=vec3(1.,.04,.39),orange=vec3(1.,.30,.065),gold=vec3(1.,.61,.18);
  vec3 violet=vec3(.45,.12,1.),blue=vec3(.045,.24,1.),cyan=vec3(.025,.73,1.);
- vec3 color=vec3(.006,.003,.026);
+ vec3 color=vec3(0.);
  // Dark negative space between the arc tracks; keep atmospheric glow restrained.
  color+=violet*glow(r-.36,.31)*(.018+.018*u_mid);
  color+=blue*glow(length(p-vec2(-.28,-.19)),.30)*(.014+.026*u_high);
@@ -79,14 +79,14 @@ void main(){
  color+=mix(cyan,pink,rnd)*star*(.12+.58*u_sustain[10]+.95*u_transient[11])*.72*amp;
  // Exponential tonemapping prevents broad white smears.
  color=1.-exp(-color*1.03);
- fragColor=vec4(color,1.);
+ fragColor=vec4(color,max(color.r,max(color.g,color.b)));
 }`;
 const compile=(gl,type,source)=>{const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)){const message=gl.getShaderInfoLog(shader);gl.deleteShader(shader);throw Error(message)}return shader};
 export default function NeonPulse360({bins=[],playing=false,intensity=65,onUnavailable,background=false,reduced=false}){
  const canvas=useRef(null),inputs=useRef({});inputs.current={bins,playing,intensity,background,reduced};
  useEffect(()=>{
   const el=canvas.current;if(!el)return;
-  const gl=el.getContext('webgl2',{alpha:true,antialias:false,powerPreference:'low-power'});
+  const gl=el.getContext('webgl2',{alpha:true,premultipliedAlpha:true,antialias:false,powerPreference:'low-power'});
   if(!gl){onUnavailable?.();return}
   let vert,frag,program,buffer,raf=0,disposed=false,frame=0,last=0;
   try{

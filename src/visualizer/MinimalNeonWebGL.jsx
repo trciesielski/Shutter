@@ -19,7 +19,7 @@ void main(){
  float x=p.x,y=p.y,ar=u_resolution.x/u_resolution.y;
  float beat=u_beat,amp=u_intensity;
  vec3 cyan=vec3(.035,.78,1.),pink=vec3(1.,.065,.72),purple=vec3(.40,.20,1.);
- vec3 c=vec3(.003,.004,.024);
+ vec3 c=vec3(0.);
  c+=purple*glow(length(p-vec2(-.26,-.17)),.47)*.046;
  c+=cyan*glow(length(p-vec2(.31,.16)),.40)*.019;
  // Mirrored bars, 32 direct independent FFT channels; stable geometry at rest.
@@ -49,14 +49,14 @@ void main(){
  c+=mix(cyan,pink,.5+.5*sin(x*11.))*glow(y,.00155)*(.26+.23*u_mid)*amp*(1.-smoothstep(.46,.51,abs(x)));
  c+=purple*glow(y,.025)*.045*(1.-smoothstep(.46,.53,abs(x)));
  c=1.-exp(-c*1.23);
- fragColor=vec4(c,1.);
+ fragColor=vec4(c,max(c.r,max(c.g,c.b)));
 }`;
 const compile=(gl,type,source)=>{const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)){const message=gl.getShaderInfoLog(shader);gl.deleteShader(shader);throw Error(message)}return shader};
 export default function MinimalNeonWebGL({bins=[],playing=false,intensity=65,onUnavailable,background=false,reduced=false}){
  const canvas=useRef(null),inputs=useRef({});inputs.current={bins,playing,intensity,background,reduced};
  useEffect(()=>{
   const el=canvas.current;if(!el)return;
-  const gl=el.getContext('webgl2',{alpha:true,antialias:false,powerPreference:'low-power'});
+  const gl=el.getContext('webgl2',{alpha:true,premultipliedAlpha:true,antialias:false,powerPreference:'low-power'});
   if(!gl){onUnavailable?.();return}
   let vert,frag,program,buffer,raf=0,disposed=false,last=0,lastDraw=0;
   try{

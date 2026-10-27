@@ -212,7 +212,7 @@ test('Minimal mode uses its own real 32-band neon canvas visualizer',async()=>{
  const {readFile}=await import('node:fs/promises');
  const view=await readFile(new URL('../src/visualizer/MusicVisualizer.jsx',import.meta.url),'utf8');
  const renderer=await readFile(new URL('../src/visualizer/MinimalNeonSpectrum.jsx',import.meta.url),'utf8');
- assert.match(view,/mode==='minimal'\?<MinimalNeonSpectrum/);
+ assert.match(view,/mode==='minimal'\?\(webglFailed\?<MinimalNeonSpectrum/);
  assert.match(renderer,/new Float32Array\(32\)/);
  assert.match(renderer,/spectralFeatures\(/);
  assert.ok(VISUAL_MODES.some(([id])=>id==='minimal'));

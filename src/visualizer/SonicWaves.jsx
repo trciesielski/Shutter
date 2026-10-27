@@ -19,7 +19,7 @@ void main(){
  vec2 p=(gl_FragCoord.xy-u_resolution*.5)/max(1.,min(u_resolution.x,u_resolution.y));
  float x=p.x,y=p.y,t=u_time*u_playing,amp=u_intensity,beat=u_beat;
  vec3 cyan=vec3(.03,.78,1.),pink=vec3(1.,.07,.73),violet=vec3(.56,.20,1.),orange=vec3(1.,.38,.10);
- vec3 c=vec3(.002,.004,.022);
+ vec3 c=vec3(0.);
  // Clean sound-wave horizon: vocals move the wave contours, twelve bands animate independently.
  float bass=(u_sustain[0]+u_sustain[1]+u_sustain[2]+u_sustain[3])*.25;
  float vocal=u_voice,treble=u_high;
@@ -61,14 +61,14 @@ void main(){
  c+=violet*glow(y,.25)*(.018+.045*u_mid);
  c*=1.-smoothstep(.65,1.0,length(p))*.7;
  c=1.-exp(-c*1.15);
- fragColor=vec4(c,1.);
+ fragColor=vec4(c,max(c.r,max(c.g,c.b)));
 }`;
 const compile=(gl,type,source)=>{const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)){const message=gl.getShaderInfoLog(shader);gl.deleteShader(shader);throw Error(message)}return shader};
 export default function SonicWaves({bins=[],playing=false,intensity=65,onUnavailable,background=false,reduced=false}){
  const canvas=useRef(null),inputs=useRef({});inputs.current={bins,playing,intensity,background,reduced};
  useEffect(()=>{
   const el=canvas.current;if(!el)return;
-  const gl=el.getContext('webgl2',{alpha:true,antialias:false,powerPreference:'low-power'});
+  const gl=el.getContext('webgl2',{alpha:true,premultipliedAlpha:true,antialias:false,powerPreference:'low-power'});
   if(!gl){onUnavailable?.();return}
   let vert,frag,program,buffer,raf=0,disposed=false,frame=0,last=0;
   try{
