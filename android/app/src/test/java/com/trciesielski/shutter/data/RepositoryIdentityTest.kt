@@ -89,4 +89,19 @@ class RepositoryIdentityTest {
             assertEquals(102L, db.stateDao().migration(1)?.completedAtMs)
         } finally { db.close() }
     }
+
+    @Test fun nativePreferenceRatingPreservesFavoriteAndCanBeCleared() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), ShutterDatabase::class.java).allowMainThreadQueries().build()
+        try {
+            val library = LibraryRepository(db)
+            library.setRating("a", 5, true)
+            library.setPreferenceRating("a", "down")
+            assertEquals(0, db.stateDao().rating("a")?.rating)
+            assertEquals(true, db.stateDao().rating("a")?.favorite)
+            library.setPreferenceRating("a", null)
+            assertNull(db.stateDao().rating("a")?.rating)
+            assertEquals(true, db.stateDao().rating("a")?.favorite)
+            assertEquals(emptyMap<String, String>(), library.preferenceRatings())
+        } finally { db.close() }
+    }
 }

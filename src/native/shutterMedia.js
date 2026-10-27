@@ -1,6 +1,6 @@
 import {Capacitor,registerPlugin} from '@capacitor/core';
 
-const METHODS=new Set(['connect','disconnect','play','pause','toggle','stop','skipNext','skipPrevious','seekTo','setVolume','setQueue','playItem','setShuffle','setRepeat','getCatalog','getLibrary','getPlaylists','pickLocalFiles','removeLocalTrack','migrateWebStorage','createPlaylist','updatePlaylist','deletePlaylist','getAudioAnalysisCapabilities']);
+const METHODS=new Set(['connect','disconnect','play','pause','toggle','stop','skipNext','skipPrevious','seekTo','setVolume','setQueue','playItem','setShuffle','setRepeat','getCatalog','getLibrary','getPlaylists','getRatings','setRating','pickLocalFiles','removeLocalTrack','migrateWebStorage','createPlaylist','updatePlaylist','deletePlaylist','getAudioAnalysisCapabilities']);
 export const SHUTTER_MEDIA_EVENTS=Object.freeze(['playbackState','position','queueChanged','metadataChanged','catalogChanged','libraryChanged','playlistChanged','audioFocusChanged','analysisFrame','error']);
 
 export function createShutterMedia({platform=()=>Capacitor.getPlatform(),register=registerPlugin}={}){

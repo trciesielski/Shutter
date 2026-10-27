@@ -2,12 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createNativePlaybackAdapter} from '../src/audio/nativePlaybackAdapter.js';
 import {SHUTTER_MEDIA_EVENTS} from '../src/native/shutterMedia.js';
-import {startNativePlayback} from '../src/audio/useNativeAudioEngine.js';
+import {startNativePlayback,resumeNativePlayback} from '../src/audio/useNativeAudioEngine.js';
 
 function fakeMedia(){
  const listeners=new Map(),calls=[];
  const media={connect:async()=>({schemaVersion:1,eventType:'playbackState',revision:4,state:'playing',mediaId:'a',positionMs:2500,durationMs:12000,volume:.6,shuffle:true,repeat:'one',queue:['a'],queueIndex:0}),disconnect:async()=>{calls.push(['disconnect'])},addListener:async(name,fn)=>{listeners.set(name,fn);return {remove:async()=>{listeners.delete(name)}}}};
  for(const name of ['play','pause','toggle','stop','skipNext','skipPrevious','seekTo','setVolume','setQueue','playItem','setShuffle','setRepeat','getCatalog','getLibrary','pickLocalFiles','removeLocalTrack'])media[name]=async arg=>{calls.push([name,arg]);return {schemaVersion:1,tracks:[]}};
+ media.getRatings=async()=>({ratings:{}});
  return {media,listeners,calls};
 }
 test('connect maps snapshot and subscribes to every plugin event; stale state cannot regress it',async()=>{
@@ -54,6 +55,15 @@ test('startup migrates approved storage before native hydration and retries inco
  assert.deepEqual(calls,['connect','migrate','hydrate','migrate','hydrate']);
  assert.equal(raw.get('shutter-native-migration-v1'),'1');
 });
+test('failed connection retry reconnects, reinstalls listeners, migrates and hydrates',async()=>{
+ const calls=[],storage={getItem:()=>null,setItem:()=>{}};
+ const adapter={connect:async()=>{calls.push('connect');if(calls.filter(x=>x==='connect').length===1)throw Error('service offline');return async()=>{}},refreshLibrary:async()=>{calls.push('hydrate')}};
+ const media={migrateWebStorage:async()=>{calls.push('migrate');return {completed:true}}};
+ await assert.rejects(startNativePlayback(adapter,media,storage,()=>{}),/service offline/);
+ const boot=await resumeNativePlayback(null,adapter,media,storage,()=>{});
+ assert.equal(boot.migrationCompleted,true);
+ assert.deepEqual(calls,['connect','connect','migrate','hydrate']);
+});
 test('selecting an item in a native queue preserves that queue',async()=>{
  const {media,calls}=fakeMedia();
  let revision=4;
@@ -97,4 +107,34 @@ test('local library still hydrates when the native catalog is unavailable',async
  const adapter=createNativePlaybackAdapter(media);await adapter.connect(()=>{});await adapter.refreshLibrary();
  assert.equal(adapter.snapshot.files[0].id,'local-a');
  assert.equal(adapter.snapshot.catalog.status,'error');
+});
+test('playlist play waits for acknowledged queue at the selected index before playing',async()=>{
+ const {media,calls}=fakeMedia();let acknowledge;
+ media.getCatalog=async()=>({tracks:['a','b'].map(id=>({id,title:id,source:'catalog',uri:`https://${id}`}))});
+ media.setQueue=arg=>{calls.push(['setQueue',arg]);return new Promise(resolve=>{acknowledge=()=>resolve({schemaVersion:1,eventType:'playbackState',revision:5,state:'paused',mediaId:'b',positionMs:0,durationMs:9000,volume:.7,shuffle:false,repeat:'off',queue:['a','b'],queueIndex:1})})};
+ const adapter=createNativePlaybackAdapter(media);await adapter.connect(()=>{});await adapter.refreshLibrary();
+ const playback=adapter.playQueue(['a','b'],'b');
+ await Promise.resolve();
+ assert.deepEqual(calls.filter(x=>['setQueue','play','playItem'].includes(x[0])),[['setQueue',{trackIds:['a','b'],startIndex:1}]]);
+ acknowledge();await playback;
+ assert.deepEqual(calls.filter(x=>['setQueue','play','playItem'].includes(x[0])),[['setQueue',{trackIds:['a','b'],startIndex:1}],['play',{}]]);
+});
+test('stale position, queue and metadata events cannot overwrite a newer playback revision',async()=>{
+ const {media,listeners}=fakeMedia();media.connect=async()=>({schemaVersion:1,eventType:'playbackState',revision:10,state:'playing',mediaId:'a',positionMs:5000,durationMs:12000,volume:.7,shuffle:false,repeat:'off',queue:['a'],queueIndex:0});
+ const adapter=createNativePlaybackAdapter(media);await adapter.connect(()=>{});
+ listeners.get('position')({schemaVersion:1,eventType:'position',revision:9,mediaId:'a',positionMs:1000,durationMs:12000});
+ listeners.get('queueChanged')({schemaVersion:1,eventType:'queueChanged',revision:8,queue:['old']});
+ listeners.get('metadataChanged')({schemaVersion:1,eventType:'metadataChanged',revision:7,mediaId:'old'});
+ assert.equal(adapter.snapshot.seconds,5);assert.deepEqual(adapter.snapshot.queueIds,['a']);assert.equal(adapter.snapshot.mediaId,'a');
+ listeners.get('position')({schemaVersion:1,eventType:'position',revision:11,mediaId:'a',positionMs:6000,durationMs:12000});
+ listeners.get('playbackState')({schemaVersion:1,eventType:'playbackState',revision:10,state:'paused',mediaId:'a',positionMs:1000,durationMs:12000,queue:['a']});
+ assert.equal(adapter.snapshot.seconds,6);assert.equal(adapter.snapshot.state,'playing');
+});
+test('native ratings hydrate from ShutterMedia and edits delegate to it',async()=>{
+ const {media,calls}=fakeMedia();media.getRatings=async()=>({ratings:{a:'up'}});media.setRating=async options=>{calls.push(['setRating',options]);return {rating:'down'}};
+ const adapter=createNativePlaybackAdapter(media);await adapter.connect(()=>{});await adapter.refreshLibrary();
+ assert.equal(adapter.snapshot.ratings.a,'up');
+ await adapter.rateTrack('a','down');
+ assert.equal(adapter.snapshot.ratings.a,'down');
+ assert.deepEqual(calls.filter(x=>x[0]==='setRating'),[['setRating',{trackId:'a',rating:'down'}]]);
 });

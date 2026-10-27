@@ -12,13 +12,20 @@ test('stale state event cannot replace newer snapshot', () => {
   assert.equal(state.apply({schemaVersion:1,revision:5,state:'paused'}),false);
   assert.equal(state.snapshot.state,'playing');
 });
-test('non-state analysis cannot make a later connect snapshot stale',()=>{
+test('analysis and error cannot make a later connect snapshot stale',()=>{
   const state=createNativeState();
-  for(const eventType of ['analysisFrame','error','position','queueChanged','metadataChanged','audioFocusChanged']){
+  for(const eventType of ['analysisFrame','error','audioFocusChanged']){
     assert.equal(state.apply({schemaVersion:1,revision:9,eventType}),false);
   }
   assert.equal(state.apply({schemaVersion:1,revision:8,state:'paused'}),true);
   assert.equal(state.snapshot.state,'paused');
+});
+test('newer position revision rejects an older playback snapshot',()=>{
+ const state=createNativeState();
+ assert.equal(state.apply({schemaVersion:1,revision:5,eventType:'playbackState',state:'playing'}),true);
+ assert.equal(state.apply({schemaVersion:1,revision:7,eventType:'position',positionMs:5000}),true);
+ assert.equal(state.apply({schemaVersion:1,revision:6,eventType:'playbackState',state:'paused'}),false);
+ assert.equal(state.revision,7);
 });
 test('oversized migration rejection keeps the web marker absent for retry',async()=>{
   const data=new Map([['shutter-favorites','["track"]']]);
@@ -44,6 +51,13 @@ test('web wrapper never calls native plugin',async()=>{
   const media=createShutterMedia({platform:()=> 'web',register:()=>{called=true;return {play(){called=true}}}});
   await assert.rejects(media.play());
   assert.equal(called,false);
+});
+test('ratings are exposed only through the Android plugin contract',async()=>{
+ const calls=[];const plugin={getRatings:async()=>({ratings:{a:'up'}}),setRating:async options=>{calls.push(options);return {rating:options.rating}}};
+ const media=createShutterMedia({platform:()=> 'android',register:()=>plugin});
+ assert.deepEqual((await media.getRatings()).ratings,{a:'up'});
+ assert.equal((await media.setRating({trackId:'a',rating:null})).rating,null);
+ assert.deepEqual(calls,[{trackId:'a',rating:null}]);
 });
 test('incomplete migration retains raw keys and retries despite an old marker',async()=>{
  const data=new Map([['shutter-user-playlists-v1','raw'],['shutter-native-migration-v1','1']]);

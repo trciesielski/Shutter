@@ -41,6 +41,7 @@ interface PlaylistDao {
 interface StateDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertRating(value: RatingEntity)
     @Query("SELECT * FROM ratings WHERE trackId = :trackId") suspend fun rating(trackId: String): RatingEntity?
+    @Query("SELECT * FROM ratings") suspend fun ratings(): List<RatingEntity>
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun addHistory(value: ListeningHistoryEntity)
     @Query("SELECT * FROM listening_history ORDER BY playedAtMs DESC, trackId") suspend fun history(): List<ListeningHistoryEntity>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertPlayback(value: PlaybackStateEntity)

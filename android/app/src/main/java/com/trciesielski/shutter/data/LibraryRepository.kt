@@ -37,6 +37,17 @@ class LibraryRepository(private val db: ShutterDatabase) {
         require(rating == null || rating in 0..5)
         db.withTransaction { db.stateDao().upsertRating(RatingEntity(trackId, rating, favorite)) }
     }
+    suspend fun setPreferenceRating(trackId: String, rating: String?) {
+        require(trackId.isNotBlank() && trackId.length <= 256)
+        require(rating == null || rating == "up" || rating == "down")
+        db.withTransaction {
+            val favorite = db.stateDao().rating(trackId)?.favorite ?: false
+            db.stateDao().upsertRating(RatingEntity(trackId, when (rating) { "up" -> 5; "down" -> 0; else -> null }, favorite))
+        }
+    }
+    suspend fun preferenceRatings(): Map<String, String> = db.stateDao().ratings().mapNotNull { row ->
+        when (row.rating) { 5 -> row.trackId to "up"; 0 -> row.trackId to "down"; else -> null }
+    }.toMap()
     suspend fun recordPlay(trackId: String, playedAtMs: Long) { db.withTransaction { db.stateDao().addHistory(ListeningHistoryEntity(trackId, playedAtMs)) } }
     suspend fun savePosition(trackId: String?, positionMs: Long, updatedAtMs: Long) {
         require(positionMs >= 0)

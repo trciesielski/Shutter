@@ -271,6 +271,21 @@ class ShutterMediaPlugin : Plugin() {
         val tracks = withContext(Dispatchers.IO) { LibraryRepository(db).tracks().filter { it.source == TrackSource.LOCAL } }
         JSObject().put("schemaVersion", 1).put("tracks", JSArray(tracks.map(::track)))
     }
+    @PluginMethod fun getRatings(call: PluginCall) = execute(call) {
+        val ratings = withContext(Dispatchers.IO) { LibraryRepository(db).preferenceRatings() }
+        JSObject().put("schemaVersion", 1).put("ratings", JSObject().apply { ratings.forEach { (id, value) -> put(id, value) } })
+    }
+    @PluginMethod fun setRating(call: PluginCall) = execute(call) {
+        val id = PluginPayloads.requiredId(call.data, "trackId")
+        require(call.data.has("rating")) { "rating required" }
+        val rawRating = call.data.opt("rating")
+        require(rawRating == JSONObject.NULL || rawRating is String) { "Invalid rating" }
+        val rating = rawRating as? String
+        require(rating == null || rating == "up" || rating == "down") { "Invalid rating" }
+        withContext(Dispatchers.IO) { LibraryRepository(db).setPreferenceRating(id, rating) }
+        emit("libraryChanged", JSObject().put("ratedId", id))
+        JSObject().put("schemaVersion", 1).put("trackId", id).put("rating", rating ?: JSONObject.NULL)
+    }
     @PluginMethod fun getPlaylists(call: PluginCall) = execute(call) {
         val playlists = withContext(Dispatchers.IO) {
             val database = db

@@ -13,9 +13,10 @@ const shareMessages={
  unavailableCatalog:'Brak publicznego linku dla tego utworu'
 };
 
-export default function LibraryTrack({track,index,active,playing,onPlay,onToggle,onRemove,onPlayNext,playlists}){
+export default function LibraryTrack({track,index,active,playing,onPlay,onToggle,onRemove,onPlayNext,playlists,ratings,onRate}){
  const [open,setOpen]=useState(false),[creating,setCreating]=useState(false),[name,setName]=useState('');
- const [rating,setRating]=useState(()=>getTrackRating(track.id));
+ const [localRating,setLocalRating]=useState(()=>onRate?null:getTrackRating(track.id));
+ const rating=onRate?ratings?.[track.id]??null:localRating;
  const [shareNotice,setShareNotice]=useState('');
  const [menuPoint,setMenuPoint]=useState({left:12,top:12});
  const menuRef=useRef(null),menuButtonRef=useRef(null);
@@ -25,13 +26,13 @@ export default function LibraryTrack({track,index,active,playing,onPlay,onToggle
  const [remoteArtFailed,setRemoteArtFailed]=useState(false);
  useEffect(()=>setRemoteArtFailed(false),[track.coverUrl]);
  const shownArt=artUrl||(!remoteArtFailed&&track.coverUrl)||null;
- useEffect(()=>{setRating(getTrackRating(track.id));setShareNotice('');return()=>clearTimeout(shareTimer.current)},[track.id]);
+ useEffect(()=>{if(!onRate)setLocalRating(getTrackRating(track.id));setShareNotice('');return()=>clearTimeout(shareTimer.current)},[track.id]);
  useEffect(()=>{if(!open)return;const close=e=>{if(!ref.current?.contains(e.target)&&!menuRef.current?.contains(e.target))setOpen(false)};const esc=e=>{if(e.key==='Escape')setOpen(false)};document.addEventListener('pointerdown',close);document.addEventListener('keydown',esc);return()=>{document.removeEventListener('pointerdown',close);document.removeEventListener('keydown',esc)}},[open]);
  const toggleMenu=()=>{if(open){setOpen(false);return}const box=menuButtonRef.current?.getBoundingClientRect();if(box){const width=Math.min(260,window.innerWidth-24);setMenuPoint({left:Math.max(12,Math.min(box.right-width,window.innerWidth-width-12)),top:box.bottom+7})}setOpen(true)};
  useEffect(()=>{if(!open)return;const reposition=()=>{const box=menuButtonRef.current?.getBoundingClientRect();if(!box)return;const width=Math.min(260,window.innerWidth-24);setMenuPoint({left:Math.max(12,Math.min(box.right-width,window.innerWidth-width-12)),top:box.bottom+7})};window.addEventListener('resize',reposition);window.addEventListener('scroll',reposition,true);return()=>{window.removeEventListener('resize',reposition);window.removeEventListener('scroll',reposition,true)}},[open]);
  const favorite=playlists.isFavorite(track.id);
  const play=()=>active?onToggle():onPlay(index);
- const rate=value=>setRating(setTrackRating(track.id,rating===value?null:value));
+ const rate=value=>{const next=rating===value?null:value;if(onRate)onRate(track.id,next);else setLocalRating(setTrackRating(track.id,next))};
  const share=async()=>{const result=await shareTrack(track);setShareNotice(shareMessages[result==='unavailable'&&track.source==='catalog'?'unavailableCatalog':result]);clearTimeout(shareTimer.current);shareTimer.current=setTimeout(()=>setShareNotice(''),2200)};
  return <div className={'library-track '+(active?'selected':'')} ref={ref}>
   <button className="library-track-main" onClick={play} aria-label={'Odtwórz utwór '+track.title}>

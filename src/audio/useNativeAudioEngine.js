@@ -20,6 +20,10 @@ export async function startNativePlayback(adapter,media,storage,onState){
  const result=await retry();
  return {...result,cleanup,retry};
 }
+export async function resumeNativePlayback(boot,adapter,media,storage,onState){
+ if(!boot)return startNativePlayback(adapter,media,storage,onState);
+ return {...boot,...await boot.retry()};
+}
 
 export function useNativeAudioEngine(){
  const adapter=useRef(null);if(!adapter.current)adapter.current=createNativePlaybackAdapter(shutterMedia);
@@ -28,13 +32,13 @@ export function useNativeAudioEngine(){
  useEffect(()=>{
   let live=true;
   startNativePlayback(adapter.current,shutterMedia,globalThis.localStorage,s=>{if(live)setSnapshot(s)})
-   .then(result=>{if(live){boot.current=result;setStartupError(result.error);setNativeReady(true)}else result.cleanup()})
-   .catch(e=>{if(live){setStartupError(e.message);setNativeReady(true)}});
+   .then(result=>{if(live){boot.current=result;setStartupError(result.error);setNativeReady(v=>v+1)}else result.cleanup()})
+   .catch(e=>{if(live)setStartupError(e.message)});
   return()=>{live=false;boot.current?.cleanup();boot.current=null};
  },[]);
  const invoke=name=>(...args)=>adapter.current[name](...args).catch(e=>setStartupError(e.message));
- const reloadCatalog=async()=>{if(boot.current){const result=await boot.current.retry();setStartupError(result.error)}else try{await adapter.current.refreshLibrary()}catch(e){setStartupError(e.message)}};
+ const reloadCatalog=async()=>{try{const result=await resumeNativePlayback(boot.current,adapter.current,shutterMedia,globalThis.localStorage,setSnapshot);boot.current=result;setStartupError(result.error);setNativeReady(v=>v+1)}catch(e){setStartupError(e.message)}};
  return {...snapshot,eq:nativeEq,capabilities:nativeCapabilities,error:startupError||snapshot.error,nativeReady,reloadCatalog,
-  importFiles:invoke('importFiles'),remove:invoke('remove'),select:invoke('select'),toggle:invoke('toggle'),stop:invoke('stop'),seek:invoke('seek'),setGain:invoke('setGain'),next:invoke('next'),prev:invoke('prev'),loadQueue:invoke('loadQueue'),move:invoke('move'),addNext:invoke('addNext'),toggleShuffle:invoke('toggleShuffle'),cycleRepeat:invoke('cycleRepeat'),
+  importFiles:invoke('importFiles'),remove:invoke('remove'),select:invoke('select'),toggle:invoke('toggle'),stop:invoke('stop'),seek:invoke('seek'),setGain:invoke('setGain'),next:invoke('next'),prev:invoke('prev'),loadQueue:invoke('loadQueue'),playQueue:invoke('playQueue'),move:invoke('move'),addNext:invoke('addNext'),rateTrack:invoke('rateTrack'),toggleShuffle:invoke('toggleShuffle'),cycleRepeat:invoke('cycleRepeat'),
   transition:0,setTransition:()=>{},history:[],historyStats:[],clearPlays:()=>{}};
 }

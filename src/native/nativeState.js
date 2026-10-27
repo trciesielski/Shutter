@@ -11,11 +11,12 @@ const REPORT='shutter-native-migration-report-v1';
 export function createNativeState(){
   let revision=-1;
   let snapshot=null;
+  const stateEvents=new Set(['playbackState','position','queueChanged','metadataChanged']);
   return {
     get snapshot(){return snapshot},
     get revision(){return revision},
     apply(event){
-      if(event?.schemaVersion!==1||(event.eventType&&event.eventType!=='playbackState')||!Number.isSafeInteger(event.revision)||event.revision<=revision)return false;
+      if(event?.schemaVersion!==1||(event.eventType&&!stateEvents.has(event.eventType))||!Number.isSafeInteger(event.revision)||event.revision<=revision)return false;
       revision=event.revision;
       snapshot={...snapshot,...event};
       return true;
