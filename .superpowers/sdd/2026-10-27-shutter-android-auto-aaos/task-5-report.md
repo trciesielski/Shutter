@@ -12,9 +12,15 @@ files were edited.
 - `npm run build`, `npm run build:mobile`, and `npm run android:sync` passed.
 - Both flavor manifest-processing tasks passed and their merged manifests were
   inspected.
-- The phone and automotive APKs were **not built** in this environment. The
-  required Android SDK is unavailable/configured nowhere; no flavor APK path or
-  SHA-256 can honestly be reported as a Task 5 build artifact.
+- The initial APK attempt was blocked by the missing Android SDK, but the later
+  configured rerun built both debug flavors successfully. The current
+  workspace APKs are canonical for this report:
+  `android/app/build/outputs/apk/phoneAuto/debug/app-phoneAuto-debug.apk`
+  (8,090,892 bytes, SHA-256
+  `88023f79a4b8c932897391586698795d37003dba00dd977136e7dd5d5d06147f`) and
+  `android/app/build/outputs/apk/automotive/debug/app-automotive-debug.apk`
+  (8,090,591 bytes, SHA-256
+  `7af8a626327d6914d31c77b362dc45dc5231d6a837df226a0814fbd93a06432`).
 - Android JVM tests, instrumentation tests, phone installation, Android Auto
   projection/DHU, and AAOS host tests were not run successfully and remain
   **unverified**.
@@ -198,7 +204,21 @@ executed, 112 up-to-date). This successful rerun corrects the earlier
 missing-SDK result for the APK build only; it does not change the historical
 results for host/device tests.
 
-Controller-provided APK evidence to carry forward:
+Canonical current-workspace APK evidence from the successful rerun:
+
+```text
+android/app/build/outputs/apk/phoneAuto/debug/app-phoneAuto-debug.apk
+  8,090,892 bytes
+  SHA-256 88023f79a4b8c932897391586698795d37003dba00dd977136e7dd5d5d06147f
+
+android/app/build/outputs/apk/automotive/debug/app-automotive-debug.apk
+  8,090,591 bytes
+  SHA-256 7af8a626327d6914d31c77b362dc45dc5231d6a837df226a0814fbd93a06432
+```
+
+Earlier controller-provided APK values are retained below as a non-canonical
+historical cross-check only; they do not identify the canonical workspace
+artifacts:
 
 ```text
 android/app/build/outputs/apk/phoneAuto/debug/app-phoneAuto-debug.apk
@@ -210,13 +230,9 @@ android/app/build/outputs/apk/automotive/debug/app-automotive-debug.apk
   SHA-256 99460a0256a34e25966d65448069a4457b409852948fd370655e52ddcce6fc58
 ```
 
-The local post-rerun audit in this workspace confirmed the same byte sizes but
-returned different SHA-256 values (`88023f79a4b8c932897391586698795d37003dba00dd977136e7dd5d5d06147f`
-for `phoneAuto` and
-`7af8a626327d6914d31c77b362dc45dc5231d6a837df226a0814fbd93a06432`
-for `automotive`). Both sets are recorded explicitly because the APK bytes
-were rebuilt locally and the supplied controller hashes are not reproducible
-from that local post-build hash check.
+The canonical local hashes above differ from those historical controller
+values despite matching byte sizes; both are retained explicitly to avoid
+mistaking the historical cross-check for the current workspace artifact.
 
 Merged manifest evidence from the successful rerun:
 

@@ -122,8 +122,10 @@ Media3 `ExoPlayer` and `MediaLibrarySession`.
 
 1. Install `app-phoneAuto-debug.apk` and launch SHUTTER.
 2. Open **Library** and use **Add music files**. The picker uses Android SAF
-   with multiple selection for MP3, FLAC, WAV, M4A/AAC, OGG/Opus, and related
-   supported audio MIME types.
+   with multiple selection, but the current native whitelist is limited to the
+   primary MP3/MPEG, FLAC, WAV, and MP4/M4A formats. AAC, OGG, and Opus are not
+   claimed for SAF import; they are accepted only where the catalog, Media3,
+   and the device playback path actually supports them.
 3. Grant read access when prompted. SHUTTER persists the read grant, reads
    metadata/artwork, and stores the library record in Room. Removing a track
    removes SHUTTER's record/cache and does not delete the user's source file.
