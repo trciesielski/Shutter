@@ -34,15 +34,12 @@ class SafLibraryManager(
                 persistRead(uri)
                 newlyPersisted = !alreadyPersisted
                 val metadata = metadataReader.read(uri) { size, modified -> LocalTrackId.from(uri, size, modified) }
+                require(metadata.mimeType in MetadataReader.SUPPORTED_MIME) { "Unsupported audio type: ${metadata.mimeType}" }
                 val id = LocalTrackId.from(uri, metadata.size, metadata.modifiedMs)
-                library.upsert(Track(id, metadata.title, metadata.artist, metadata.album, uri,
+                val staleIds = library.replaceLocalIdentity(Track(id, metadata.title, metadata.artist, metadata.album, uri,
                     TrackSource.LOCAL, metadata.mimeType, metadata.durationMs, metadata.artworkUri, null),
                     metadata.size, metadata.modifiedMs)
-                library.tracks().filter { it.source == TrackSource.LOCAL && it.uri == uri && it.id != id }
-                    .forEach { stale ->
-                        library.remove(stale.id)
-                        metadataReader.artworkFile(stale.id).delete()
-                    }
+                staleIds.forEach { metadataReader.artworkFile(it).delete() }
                 imported++
             } catch (e: Exception) {
                 failures[uri] = e.message ?: e.javaClass.simpleName
@@ -70,9 +67,8 @@ class SafLibraryManager(
         const val REQUEST_CODE = 4103
         fun pickerIntent(): Intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            type = "audio/*"
-            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("audio/mpeg", "audio/flac", "audio/wav",
-                "audio/mp4", "audio/x-m4a", "audio/aac", "audio/ogg", "audio/opus"))
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, MetadataReader.SUPPORTED_MIME.toTypedArray())
             putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }

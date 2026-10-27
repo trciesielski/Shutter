@@ -73,17 +73,13 @@ open class MetadataReader(private val context: Context) {
     companion object {
         const val MAX_ART_BYTES = 1024 * 1024
         val SUPPORTED_MIME = setOf("audio/mpeg", "audio/mp3", "audio/flac", "audio/x-flac",
-            "audio/wav", "audio/x-wav", "audio/wave", "audio/mp4", "audio/x-m4a",
-            "audio/aac", "audio/ogg", "audio/opus")
+            "audio/wav", "audio/x-wav", "audio/wave", "audio/mp4", "audio/x-m4a")
 
         fun mimeFromName(name: String?): String = when (name?.substringAfterLast('.', "")?.lowercase()) {
             "mp3" -> "audio/mpeg"
             "flac" -> "audio/flac"
             "wav" -> "audio/wav"
             "m4a", "mp4" -> "audio/mp4"
-            "aac" -> "audio/aac"
-            "ogg", "oga" -> "audio/ogg"
-            "opus" -> "audio/opus"
             else -> "application/octet-stream"
         }
     }

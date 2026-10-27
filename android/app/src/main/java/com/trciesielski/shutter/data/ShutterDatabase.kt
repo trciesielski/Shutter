@@ -22,6 +22,7 @@ interface TrackDao {
     @Query("SELECT * FROM tracks ORDER BY CASE WHEN sortOrder IS NULL THEN 1 ELSE 0 END, sortOrder, id") fun observe(): Flow<List<TrackEntity>>
     @Query("SELECT * FROM tracks ORDER BY CASE WHEN sortOrder IS NULL THEN 1 ELSE 0 END, sortOrder, id") suspend fun all(): List<TrackEntity>
     @Query("SELECT * FROM tracks WHERE id = :id") suspend fun find(id: String): TrackEntity?
+    @Query("SELECT * FROM tracks WHERE uri = :uri") suspend fun byUri(uri: String): List<TrackEntity>
     @Query("DELETE FROM tracks WHERE id = :id") suspend fun remove(id: String)
 }
 
@@ -30,6 +31,7 @@ interface PlaylistDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsert(playlist: PlaylistEntity)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertEntries(entries: List<PlaylistEntryEntity>)
     @Query("DELETE FROM playlist_entries WHERE playlistId = :playlistId") suspend fun clearEntries(playlistId: String)
+    @Query("UPDATE playlist_entries SET trackId = :newId, orphaned = 0 WHERE trackId = :oldId") suspend fun retargetEntries(oldId: String, newId: String)
     @Query("SELECT * FROM playlists ORDER BY sortOrder, id") fun observePlaylists(): Flow<List<PlaylistEntity>>
     @Query("SELECT * FROM playlist_entries WHERE playlistId = :playlistId ORDER BY position") suspend fun entries(playlistId: String): List<PlaylistEntryEntity>
     @Query("DELETE FROM playlists WHERE id = :playlistId") suspend fun remove(playlistId: String)

@@ -13,6 +13,21 @@ class LibraryRepository(private val db: ShutterDatabase) {
         if (track.source == TrackSource.LOCAL) require(track.id == localId(track.uri, documentSize, documentModifiedMs)) { "Local track ID must match its document URI and metadata" }
         db.withTransaction { db.trackDao().upsert(TrackEntity.from(track, documentSize, documentModifiedMs)) }
     }
+    suspend fun replaceLocalIdentity(track: Track, documentSize: Long?, documentModifiedMs: Long?): List<String> {
+        require(track.source == TrackSource.LOCAL && track.uri.scheme == "content")
+        require(track.id == localId(track.uri, documentSize, documentModifiedMs))
+        return db.withTransaction {
+            val staleIds = db.trackDao().byUri(track.uri.toString())
+                .filter { it.source == TrackSource.LOCAL && it.id != track.id }
+                .map { it.id }
+            db.trackDao().upsert(TrackEntity.from(track, documentSize, documentModifiedMs))
+            for (staleId in staleIds) {
+                db.playlistDao().retargetEntries(staleId, track.id)
+                db.trackDao().remove(staleId)
+            }
+            staleIds
+        }
+    }
     fun observeTracks(): Flow<List<Track>> = db.trackDao().observe().map { rows -> rows.map(TrackEntity::toTrack) }
     suspend fun tracks(): List<Track> = db.trackDao().all().map(TrackEntity::toTrack)
     suspend fun resolve(trackId: String): Track? = db.trackDao().find(trackId)?.toTrack()
