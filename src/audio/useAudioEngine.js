@@ -4,20 +4,26 @@ import {extractMetadata} from './musicMetadata.js';
 import {nextIndex,previousIndex,reordered,shuffledQueue} from './queueLogic.js';
 import {recordListen,readHistory,historyStats,clearHistory} from './listeningHistory.js';
 import {useEqualizer} from './useEqualizer.js';
+import {CAPABILITIES} from '../platform.js';
+import {resolveCatalogConfig,loadCatalog,browserCanPlay} from '../catalog/catalog.js';
 
 const AUDIO_EXT=/\.(mp3|wav|ogg|m4a|aac|flac|opus)$/i;
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 const positionKey='shutter-last-position-v1';
 const fadeKey='shutter-crossfade-v1';
 function persisted(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}}
+const catalogConfig=()=>resolveCatalogConfig(import.meta.env||{});
 
-export function useAudioEngine(){
+export function useAudioEngine({capabilities=CAPABILITIES}={}){
+ const streaming=capabilities.publicCatalog;
  const decks=useRef([]),activeDeck=useRef(0),urls=useRef([]),latest=useRef({});
  const change=useRef(null),busy=useRef(false),fadeTimer=useRef(null),recorded=useRef(null),activeTrackId=useRef(null),supportsDsp=useRef(false),upNext=useRef(-1),unshuffledOrder=useRef(null);
  const eq=useEqualizer(decks);
  const [files,setFiles]=useState([]),[index,setIndex]=useState(0),[state,setState]=useState('idle');
  const [seconds,setSeconds]=useState(0),[duration,setDuration]=useState(0),[volume,setVolume]=useState(.7),[error,setError]=useState('');
  const [shuffle,setShuffle]=useState(false),[repeat,setRepeat]=useState('off'),[queueIds,setQueueIds]=useState([]);
+ const [catalog,setCatalog]=useState(()=>({status:streaming?'loading':'disabled',title:null,skipped:[],error:null}));
+ const catalogRequest=useRef(0);
  const [history,setHistory]=useState(readHistory),[transition,setTransitionState]=useState(()=>clamp(Number(persisted(fadeKey,0)),0,12));
  latest.current={files,index,shuffle,repeat,queueIds,transition};
  const current=()=>decks.current[activeDeck.current]||null;
@@ -34,7 +40,9 @@ export function useAudioEngine(){
  useEffect(()=>{
   const pair=[new Audio(),new Audio()];decks.current=pair;
   pair.forEach((a,i)=>{
-   a.preload='auto';a.volume=.7;
+   a.preload=streaming?'metadata':'auto';a.volume=.7;
+   // Streamed catalog audio feeds the Web Audio EQ/visualizer, which needs CORS-clean media.
+   if(streaming)a.crossOrigin='anonymous';
    a.addEventListener('timeupdate',()=>{
     if(i!==activeDeck.current)return;
     setSeconds(a.currentTime||0);
@@ -55,19 +63,38 @@ export function useAudioEngine(){
    a.addEventListener('playing',()=>{if(i!==activeDeck.current)return;setState('playing');const info=latest.current,f=info.files.find(x=>x.id===activeTrackId.current)||info.files[info.index];if(f&&recorded.current!==f.id){recorded.current=f.id;setHistory(recordListen(f))}});
    a.addEventListener('pause',()=>{if(i===activeDeck.current)setState(a.ended?'stopped':'paused')});
    a.addEventListener('waiting',()=>{if(i===activeDeck.current)setState('loading')});
-   a.addEventListener('error',()=>{if(i===activeDeck.current){setError('Nie można odtworzyć tego formatu w tej przeglądarce.');setState('error')}});
+   a.addEventListener('error',()=>{if(i===activeDeck.current){setError(streaming?'Nie można odtworzyć tego utworu: plik jest niedostępny lub ma nieobsługiwany format.':'Nie można odtworzyć tego formatu w tej przeglądarce.');setState('error')}});
    a.addEventListener('ended',()=>{if(i!==activeDeck.current)return;const info=latest.current;if(info.repeat==='one'){a.currentTime=0;a.play().catch(()=>setState('paused'));return}const at=neighbor(true);if(at>=0){change.current?.(at,false)}else{setState('stopped');setSeconds(a.duration||0)}});
   });
   let disposed=false;
+  if(streaming){fetchCatalog();return()=>{disposed=true;catalogRequest.current++;clearTimeout(fadeTimer.current);pair.forEach(a=>{a.pause();a.removeAttribute('src');a.load()})}}
   readTracks().then(records=>{
    if(disposed)return;
    const restored=records.map(({blob,...meta})=>({...meta,url:URL.createObjectURL(blob)}));
    urls.current.push(...restored.map(f=>f.url));setFiles(existing=>{const seen=new Set(existing.map(f=>f.id));return [...restored.filter(f=>!seen.has(f.id)),...existing]});setQueueIds(old=>[...restored.map(f=>f.id),...old.filter(id=>!restored.some(f=>f.id===id))]);
-   const last=persisted(positionKey,null),idx=restored.findIndex(f=>f.id===last?.id);
-   if(idx>=0){setIndex(idx);activeTrackId.current=restored[idx].id;pair[0].src=restored[idx].url;pair[0].load();pair[0].addEventListener('loadedmetadata',()=>{if(Number.isFinite(last.time)&&last.time>=0&&last.time<pair[0].duration){pair[0].currentTime=last.time;setSeconds(last.time)}},{once:true})}
+   restorePosition(restored);
   }).catch(()=>{if(!disposed)setError('Nie można wczytać lokalnej biblioteki.')});
   return()=>{disposed=true;clearTimeout(fadeTimer.current);pair.forEach(a=>{a.pause();a.removeAttribute('src');a.load()});urls.current.forEach(URL.revokeObjectURL)};
  },[]);
+
+ function restorePosition(list){
+  const pair=decks.current,last=persisted(positionKey,null),idx=list.findIndex(f=>f.id===last?.id);
+  if(idx<0||!pair[0])return;
+  setIndex(idx);activeTrackId.current=list[idx].id;pair[0].src=list[idx].url;pair[0].load();
+  pair[0].addEventListener('loadedmetadata',()=>{if(Number.isFinite(last.time)&&last.time>=0&&last.time<pair[0].duration){pair[0].currentTime=last.time;setSeconds(last.time)}},{once:true});
+ }
+ async function fetchCatalog(){
+  if(!streaming)return;
+  const request=++catalogRequest.current;
+  setCatalog(c=>({...c,status:'loading',error:null}));
+  const result=await loadCatalog({...catalogConfig(),canPlay:browserCanPlay});
+  if(request!==catalogRequest.current)return;
+  setCatalog({status:result.status,title:result.title,skipped:result.skipped,error:result.error});
+  if(latest.current.files.length)return;
+  setFiles(result.tracks);setQueueIds(result.tracks.map(f=>f.id));
+  restorePosition(result.tracks);
+ }
+ const reloadCatalog=()=>{if(streaming&&!latest.current.files.length)fetchCatalog()};
 
  const select=async(at,withFade=true)=>{
   const info=latest.current,f=info.files[at];if(!f||!decks.current.length)return;
@@ -97,11 +124,12 @@ export function useAudioEngine(){
    upNext.current=-1;
    if(recorded.current!==f.id){recorded.current=f.id;setHistory(recordListen(f))}setIndex(at);setState('playing');
    if(!cross)busy.current=false;
-  }catch(e){busy.current=false;if(cross){target.pause();eq.setDeck(currentDeck)}setState('paused');if(e.name!=='AbortError')setError('Nie można rozpocząć odtwarzania: '+e.message)}
+  }catch(e){busy.current=false;if(cross){target.pause();eq.setDeck(currentDeck)}setState('paused');if(e.name==='NotAllowedError')setError('Przeglądarka wstrzymała automatyczne odtwarzanie. Naciśnij Odtwórz.');else if(e.name!=='AbortError')setError('Nie można rozpocząć odtwarzania: '+e.message)}
  };
  change.current=select;
 
  const importFiles=async list=>{
+  if(!capabilities.localImport)return;
   const input=Array.from(list||[]).filter(f=>AUDIO_EXT.test(f.name)||f.type.startsWith('audio/'));
   const filtered=input.filter(f=>!latest.current.files.some(x=>x.filename===f.name&&x.size===f.size&&x.modified===f.lastModified));
   if(!filtered.length){setError('Nie znaleziono nowych plików audio.');return}
@@ -116,7 +144,7 @@ export function useAudioEngine(){
   const a=current();if(!a||!latest.current.files.length)return;
   if(!a.src){await select(latest.current.index,false);return}
   if(!a.paused){a.pause();return}
-  try{await eq.activate();if(a.ended)a.currentTime=0;await a.play();setError('')}catch(e){setError('Nie można wznowić odtwarzania: '+e.message)}
+  try{await eq.activate();if(a.ended)a.currentTime=0;await a.play();setError('')}catch(e){setError(e.name==='NotAllowedError'?'Przeglądarka wstrzymała automatyczne odtwarzanie. Naciśnij Odtwórz.':'Nie można wznowić odtwarzania: '+e.message)}
  };
  const stop=()=>{clearTimeout(fadeTimer.current);busy.current=false;decks.current.forEach(a=>{a.pause();if(a.src)a.currentTime=0});setSeconds(0);setState('stopped')};
  const seek=p=>{const a=current();if(!a)return;const length=Number.isFinite(a.duration)&&a.duration>0?a.duration:duration;if(!Number.isFinite(length)||length<=0)return;const time=clamp(length*clamp(Number(p),0,100)/100,0,length);try{a.currentTime=time;setSeconds(time);setDuration(length)}catch(e){setError('Nie można przewinąć tego pliku.')}};
@@ -124,7 +152,7 @@ export function useAudioEngine(){
  const next=()=>{const at=neighbor(false);if(at>=0)select(at)};
  const prev=()=>{const a=current();if(a&&a.currentTime>3){a.currentTime=0;return}const info=latest.current,order=orderOf(info),pos=order.indexOf(info.index);if(pos>0)select(order[pos-1],false)};
  const remove=async id=>{
-  if(busy.current)return;
+  if(!capabilities.localDelete||busy.current)return;
   try{await removeTrack(id)}catch{setError('Nie można usunąć pliku.');return}
   const f=latest.current.files.find(x=>x.id===id);if(f?.url){URL.revokeObjectURL(f.url);urls.current=urls.current.filter(x=>x!==f.url)}
   const removedIndex=latest.current.files.findIndex(x=>x.id===id);
@@ -162,14 +190,15 @@ export function useAudioEngine(){
  const clearPlays=()=>{clearHistory();setHistory([])};
  useEffect(()=>{
   if(!('mediaSession' in navigator)||!files[index]||typeof MediaMetadata==='undefined')return;
-  const f=files[index];navigator.mediaSession.metadata=new MediaMetadata({title:f.title,artist:f.artist,album:f.album});
+  const f=files[index];navigator.mediaSession.metadata=new MediaMetadata({title:f.title,artist:f.artist,album:f.album,...(f.coverUrl?{artwork:[{src:f.coverUrl}]}:{})});
   navigator.mediaSession.playbackState=state==='playing'?'playing':'paused';
   const handlers={play:()=>toggle(),pause:()=>current()?.pause(),nexttrack:()=>next(),previoustrack:()=>prev(),seekto:e=>{if(Number.isFinite(e.seekTime)&&current())current().currentTime=e.seekTime}};
   for(const [key,fn] of Object.entries(handlers))try{navigator.mediaSession.setActionHandler(key,fn)}catch{}
   return()=>{for(const key of Object.keys(handlers))try{navigator.mediaSession.setActionHandler(key,null)}catch{}};
  },[files,index,state,shuffle,repeat,queueIds]);
 
- return {files,index,state,seconds,duration,volume,error,eq,importFiles,remove,select,toggle,stop,seek,setGain,next,prev,
+ return {files,index,state,seconds,duration,volume,error,eq,capabilities,catalog,reloadCatalog,
+ importFiles:capabilities.localImport?importFiles:null,remove:capabilities.localDelete?remove:null,select,toggle,stop,seek,setGain,next,prev,
  queueIds,loadQueue,move,addNext,shuffle,toggleShuffle,repeat,cycleRepeat,transition,setTransition,
  history,historyStats:historyStats(history),clearPlays};
 }

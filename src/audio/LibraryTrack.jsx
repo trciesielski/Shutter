@@ -9,7 +9,8 @@ const shareMessages={
  shared:'Udostępniono',
  copied:'Skopiowano publiczny link',
  cancelled:'Anulowano',
- unavailable:'Brak publicznego linku dla pliku lokalnego'
+ unavailable:'Brak publicznego linku dla pliku lokalnego',
+ unavailableCatalog:'Brak publicznego linku dla tego utworu'
 };
 
 export default function LibraryTrack({track,index,active,playing,onPlay,onToggle,onRemove,onPlayNext,playlists}){
@@ -21,6 +22,9 @@ export default function LibraryTrack({track,index,active,playing,onPlay,onToggle
  const ref=useRef(null),shareTimer=useRef(null);
  const [artUrl,setArtUrl]=useState(null);
  useEffect(()=>{if(!track.coverBlob)return;const url=URL.createObjectURL(track.coverBlob);setArtUrl(url);return()=>URL.revokeObjectURL(url)},[track.coverBlob]);
+ const [remoteArtFailed,setRemoteArtFailed]=useState(false);
+ useEffect(()=>setRemoteArtFailed(false),[track.coverUrl]);
+ const shownArt=artUrl||(!remoteArtFailed&&track.coverUrl)||null;
  useEffect(()=>{setRating(getTrackRating(track.id));setShareNotice('');return()=>clearTimeout(shareTimer.current)},[track.id]);
  useEffect(()=>{if(!open)return;const close=e=>{if(!ref.current?.contains(e.target)&&!menuRef.current?.contains(e.target))setOpen(false)};const esc=e=>{if(e.key==='Escape')setOpen(false)};document.addEventListener('pointerdown',close);document.addEventListener('keydown',esc);return()=>{document.removeEventListener('pointerdown',close);document.removeEventListener('keydown',esc)}},[open]);
  const toggleMenu=()=>{if(open){setOpen(false);return}const box=menuButtonRef.current?.getBoundingClientRect();if(box){const width=Math.min(260,window.innerWidth-24);setMenuPoint({left:Math.max(12,Math.min(box.right-width,window.innerWidth-width-12)),top:box.bottom+7})}setOpen(true)};
@@ -28,10 +32,10 @@ export default function LibraryTrack({track,index,active,playing,onPlay,onToggle
  const favorite=playlists.isFavorite(track.id);
  const play=()=>active?onToggle():onPlay(index);
  const rate=value=>setRating(setTrackRating(track.id,rating===value?null:value));
- const share=async()=>{const result=await shareTrack(track);setShareNotice(shareMessages[result]);clearTimeout(shareTimer.current);shareTimer.current=setTimeout(()=>setShareNotice(''),2200)};
+ const share=async()=>{const result=await shareTrack(track);setShareNotice(shareMessages[result==='unavailable'&&track.source==='catalog'?'unavailableCatalog':result]);clearTimeout(shareTimer.current);shareTimer.current=setTimeout(()=>setShareNotice(''),2200)};
  return <div className={'library-track '+(active?'selected':'')} ref={ref}>
   <button className="library-track-main" onClick={play} aria-label={'Odtwórz utwór '+track.title}>
-   <span className="library-track-art" aria-hidden="true">{artUrl&&<img src={artUrl} alt="" className="library-track-cover-image"/>}<span className="library-cover-play">{active&&playing?<Pause size={17} fill="currentColor"/>:<Play size={17} fill="currentColor"/>}</span></span>
+   <span className="library-track-art" aria-hidden="true">{shownArt&&<img src={shownArt} alt="" className="library-track-cover-image" loading="lazy" decoding="async" onError={()=>{if(!artUrl)setRemoteArtFailed(true)}}/>}<span className="library-cover-play">{active&&playing?<Pause size={17} fill="currentColor"/>:<Play size={17} fill="currentColor"/>}</span></span>
   </button>
   <div className="library-track-details">
    <button className="library-track-copy" onClick={play} aria-label={'Odtwórz utwór '+track.title}>
@@ -54,8 +58,8 @@ export default function LibraryTrack({track,index,active,playing,onPlay,onToggle
    <span className="library-track-menu-caption">Dodaj do playlisty</span>
    {playlists.lists.filter(l=>l.id!=='shutter-favorites').map(l=><button key={l.id} disabled={l.tracks.includes(track.id)} onClick={()=>{playlists.addTrack(l.id,track.id);setOpen(false)}}><ListPlus size={17}/>{l.name}{l.tracks.includes(track.id)?' ✓':''}</button>)}
    {!creating?<button onClick={()=>setCreating(true)}><Plus size={17}/> Utwórz playlistę</button>:<form className="library-track-create" onSubmit={e=>{e.preventDefault();if(name.trim()){playlists.create(name,track.id);setName('');setCreating(false);setOpen(false)}}}><input autoFocus aria-label="Nazwa playlisty" value={name} onChange={e=>setName(e.target.value)} placeholder="Nazwa playlisty"/><button type="submit" disabled={!name.trim()}>Dodaj</button></form>}
-   <div className="library-track-divider"/>
-   <button className="library-track-danger" onClick={()=>{onRemove(track.id);setOpen(false)}}><Trash2 size={17}/> Usuń z biblioteki</button>
+   {onRemove&&<><div className="library-track-divider"/>
+   <button className="library-track-danger" onClick={()=>{onRemove(track.id);setOpen(false)}}><Trash2 size={17}/> Usuń z biblioteki</button></>}
   </div>,document.body)}
  </div>
 }

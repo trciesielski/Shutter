@@ -51,6 +51,7 @@ html,body,#root{max-width:100%;overflow-x:clip}
 
 /* Empty personal music collection — no fake tracks */
 .shutter-empty{padding:24px 18px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);font-size:13px;line-height:1.6}
+.catalog-retry{margin-left:6px;padding:4px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--text);font-size:12px}
 
 /* Fixed navigation header: the content scrolls beneath a stable top bar. */
 .main{min-width:0}
