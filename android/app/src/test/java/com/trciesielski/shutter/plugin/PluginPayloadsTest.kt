@@ -1,11 +1,17 @@
 package com.trciesielski.shutter.plugin
 
+import android.os.Bundle
 import org.json.JSONArray
 import org.json.JSONObject
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.SettableFuture
+import com.trciesielski.shutter.playback.MediaQueueCommands
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -65,5 +71,35 @@ class PluginPayloadsTest {
         slot.cancel()
         assertTrue(retry.isCancelled)
         assertNotSame(retry, slot.getOrStart { SettableFuture.create() })
+    }
+
+    @Test fun optimisticControllerQueueDoesNotCompleteBeforeLateServiceRejection() = runBlocking {
+        val serviceReply = CompletableDeferred<SessionResult>()
+        var controllerQueue = listOf("old")
+        var snapshotRead = false
+        val command = async {
+            runCatching {
+                MediaQueueCommands.awaitAccepted({ serviceReply.await() }) {
+                    snapshotRead = true
+                    controllerQueue
+                }
+            }
+        }
+        controllerQueue = listOf("optimistic")
+        yield()
+        assertFalse(command.isCompleted)
+        serviceReply.complete(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+        assertTrue(command.await().isFailure)
+        assertFalse(snapshotRead)
+    }
+
+    @Test fun acceptedServiceResultSuppliesExpandedQueueIdentity() = runBlocking {
+        val extras = Bundle().apply {
+            putStringArrayList("queueIds", arrayListOf("first", "second"))
+            putInt("queueIndex", 1)
+        }
+        val outcome = MediaQueueCommands.awaitAccepted({ SessionResult(SessionResult.RESULT_SUCCESS, extras) }) { it }
+        assertEquals(listOf("first", "second"), outcome.ids)
+        assertEquals(1, outcome.index)
     }
 }

@@ -35,3 +35,16 @@ Initial runs failed during environment setup because the system Java runtime lac
 ## Concern
 
 No Android device or emulator run was available. The browser to service command sequence and lifecycle behavior have JVM coverage for the testable helpers and compile successfully, but have not been exercised on a running device.
+
+## Scoped review fix round
+
+The browser's optimistic queue state is no longer treated as service acceptance. `setQueue` and `playItem` send acknowledged custom commands through the same `MediaBrowser`. The existing Media3 service resolves all IDs before changing its sole player, returns the committed queue and index, and leaves the prior queue intact when late validation rejects an ID. The plugin waits for the service result and for its browser to reflect that queue before returning a snapshot. For playlist entries, `playItem` uses BrowseTree's expanded track queue and selected occurrence, so the returned media ID and queue match playback.
+
+The Android commands used the shell setup listed above, from `android/`:
+
+- `./gradlew :app:testDebugUnitTest --tests 'com.trciesielski.shutter.plugin.PluginPayloadsTest' --tests 'com.trciesielski.shutter.migration.WebStorageMigrationTest' --tests 'com.trciesielski.shutter.playback.BrowseTreeTest' --no-daemon --console=plain` — exit 0; `BUILD SUCCESSFUL in 25s`; JUnit XML: 19 tests, 0 skipped, 0 failures, 0 errors.
+- `./gradlew :app:testDebugUnitTest --no-daemon --console=plain` — exit 0; `BUILD SUCCESSFUL in 18s`; JUnit XML: 47 tests, 0 skipped, 0 failures, 0 errors.
+- `npm test` from repository root — exit 0; `tests 55`, `pass 55`, `fail 0`.
+- `git diff --check` from repository root — exit 0, no output.
+
+Before the fix, the focused JVM test command failed compiling the newly added regressions with `Unresolved reference 'MediaQueueCommands'`. After the service command and result gate were implemented, the focused and full runs above passed. Device or emulator testing remains unavailable.

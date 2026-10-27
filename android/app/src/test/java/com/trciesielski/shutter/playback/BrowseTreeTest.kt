@@ -85,6 +85,14 @@ class BrowseTreeTest {
             val (queue, start) = tree.queueFor(entries[1].mediaId)!!
             assertEquals(listOf("same", "same", "last"), queue.map { it.mediaId })
             assertEquals(1, start)
+            val playItem = MediaQueueCommands.preparePlayItem(tree, entries[1].mediaId)
+            assertEquals(listOf("same", "same", "last"), playItem.items.map { it.mediaId })
+            assertEquals(1, playItem.startIndex)
+            assertEquals("same", playItem.items[playItem.startIndex].mediaId)
+            assertNotEquals(entries[1].mediaId, playItem.items[playItem.startIndex].mediaId)
+            val acknowledged = MediaQueueCommands.awaitAccepted({ MediaQueueCommands.accepted(playItem) }) { it }
+            assertEquals(listOf("same", "same", "last"), acknowledged.ids)
+            assertEquals(1, acknowledged.index)
         } finally { db.close() }
     }
 

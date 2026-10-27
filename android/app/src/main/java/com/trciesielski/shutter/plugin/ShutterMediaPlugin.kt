@@ -3,6 +3,7 @@ package com.trciesielski.shutter.plugin
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
+import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaBrowser
@@ -10,6 +11,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.SessionError
+import androidx.media3.session.SessionResult
 import androidx.media3.session.SessionToken
 import androidx.room.Room
 import com.getcapacitor.JSArray
@@ -23,8 +25,11 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.trciesielski.shutter.data.*
 import com.trciesielski.shutter.library.SafLibraryManager
 import com.trciesielski.shutter.playback.ShutterMediaLibraryService
+import com.trciesielski.shutter.playback.MediaQueueCommands
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.selects.select
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.ExecutionException
@@ -189,22 +194,33 @@ class ShutterMediaPlugin : Plugin() {
 
     private fun queueIds(player: MediaBrowser): List<String> = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
 
-    private suspend fun awaitMutation(player: MediaBrowser, matches: () -> Boolean, mutate: () -> Unit) {
+    private suspend fun awaitMutation(player: MediaBrowser, send: suspend () -> SessionResult) {
         check(pendingMutation == null) { "Another media command is pending" }
         val pending = CompletableDeferred<Unit>()
         pendingMutation = pending
+        val changes = Channel<Unit>(Channel.CONFLATED)
         val observer = object : Player.Listener {
             override fun onEvents(player: Player, events: Player.Events) {
-                if (matches()) pending.complete(Unit)
+                changes.trySend(Unit)
             }
         }
         player.addListener(observer)
         try {
-            mutate()
-            if (matches()) pending.complete(Unit)
-            withTimeout(10_000) { pending.await() }
+            withTimeout(10_000) {
+                MediaQueueCommands.awaitAccepted(send) { outcome ->
+                    if (pending.isCompleted) pending.await()
+                    while (queueIds(player) != outcome.ids || player.currentMediaItemIndex != outcome.index) {
+                        select<Unit> {
+                            changes.onReceive { }
+                            pending.onAwait { }
+                        }
+                    }
+                    if (pending.isCompleted) pending.await()
+                }
+            }
         } finally {
             player.removeListener(observer)
+            changes.close()
             if (pendingMutation === pending) pendingMutation = null
         }
     }
@@ -212,12 +228,13 @@ class ShutterMediaPlugin : Plugin() {
     @PluginMethod fun setQueue(call: PluginCall) = execute(call) {
         val (ids, index) = PluginPayloads.queue(call.data)
         val player = controller()
-        PluginPayloads.replaceQueue(ids, { id -> lookup(player, id) }) { resolved ->
-            awaitMutation(player, { queueIds(player) == ids && player.currentMediaItemIndex == index }) {
-                // replaceMediaItems uses the session's onAddMediaItems path, including for a one-track queue.
-                player.replaceMediaItems(0, player.mediaItemCount, resolved)
-                player.seekTo(index, 0)
-                player.prepare()
+        PluginPayloads.replaceQueue(ids, { id -> lookup(player, id) }) { _ ->
+            awaitMutation(player) {
+                val args = Bundle().apply {
+                    putStringArrayList(MediaQueueCommands.IDS, ArrayList(ids))
+                    putInt(MediaQueueCommands.INDEX, index)
+                }
+                await(player.sendCustomCommand(MediaQueueCommands.SET_QUEUE, args))
             }
         }
         state(player)
@@ -226,10 +243,10 @@ class ShutterMediaPlugin : Plugin() {
         val id = PluginPayloads.requiredId(call.data, "trackId")
         val player = controller()
         PluginPayloads.resolvePlayable(listOf(id)) { lookup(player, it) }
-        awaitMutation(player, { player.currentMediaItem?.mediaId == id }) {
-            player.setMediaItem(MediaItem.Builder().setMediaId(id).build())
-            player.prepare()
-            player.play()
+        awaitMutation(player) {
+            await(player.sendCustomCommand(MediaQueueCommands.PLAY_ITEM, Bundle().apply {
+                putString(MediaQueueCommands.TRACK_ID, id)
+            }))
         }
         state(player)
     }
