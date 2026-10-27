@@ -23,9 +23,9 @@ export function useAudioEngine({capabilities=CAPABILITIES}={}){
  const [seconds,setSeconds]=useState(0),[duration,setDuration]=useState(0),[volume,setVolume]=useState(.7),[error,setError]=useState('');
  const [shuffle,setShuffle]=useState(false),[repeat,setRepeat]=useState('off'),[queueIds,setQueueIds]=useState([]);
  const [catalog,setCatalog]=useState(()=>({status:streaming?'loading':'disabled',title:null,skipped:[],error:null}));
- const catalogRequest=useRef(0);
+ const catalogRequest=useRef(0),catalogLoadedAt=useRef(0);
  const [history,setHistory]=useState(readHistory),[transition,setTransitionState]=useState(()=>clamp(Number(persisted(fadeKey,0)),0,12));
- latest.current={files,index,shuffle,repeat,queueIds,transition};
+ latest.current={files,index,shuffle,repeat,queueIds,transition,state};
  const current=()=>decks.current[activeDeck.current]||null;
  const orderOf=info=>(info.queueIds.length?info.queueIds.map(id=>info.files.findIndex(f=>f.id===id)).filter(i=>i>=0):info.files.map((_,i)=>i));
  const neighbor=(atEnd=false)=>{
@@ -83,17 +83,45 @@ export function useAudioEngine({capabilities=CAPABILITIES}={}){
   setIndex(idx);activeTrackId.current=list[idx].id;pair[0].src=list[idx].url;pair[0].load();
   pair[0].addEventListener('loadedmetadata',()=>{if(Number.isFinite(last.time)&&last.time>=0&&last.time<pair[0].duration){pair[0].currentTime=last.time;setSeconds(last.time)}},{once:true});
  }
- async function fetchCatalog(){
+ async function fetchCatalog(refresh=false){
   if(!streaming)return;
   const request=++catalogRequest.current;
-  setCatalog(c=>({...c,status:'loading',error:null}));
+  if(!refresh)setCatalog(c=>({...c,status:'loading',error:null}));
   const result=await loadCatalog({...catalogConfig(),canPlay:browserCanPlay});
   if(request!==catalogRequest.current)return;
+  catalogLoadedAt.current=Date.now();
+  if(refresh){applyCatalogUpdate(result);return}
   setCatalog({status:result.status,title:result.title,skipped:result.skipped,error:result.error});
   if(latest.current.files.length)return;
   setFiles(result.tracks);setQueueIds(result.tracks.map(f=>f.id));
   restorePosition(result.tracks);
  }
+ // A newly published catalog replaces the list without interrupting playback: while a track is playing
+ // the update waits for the next refresh; track IDs are stable, so the current selection is kept.
+ function applyCatalogUpdate(result){
+  if(result.status==='error')return;
+  const info=latest.current;
+  if(info.state==='playing'||info.state==='loading')return;
+  const signature=list=>list.map(t=>[t.id,t.url,t.title,t.artist,t.album,t.coverUrl,t.duration,t.genre,t.year,t.lyrics].join('\u0001')).join('\u0002');
+  setCatalog({status:result.status,title:result.title,skipped:result.skipped,error:result.error});
+  if(signature(result.tracks)===signature(info.files))return;
+  const currentId=info.files[info.index]?.id,ids=new Set(result.tracks.map(t=>t.id));
+  const at=result.tracks.findIndex(t=>t.id===currentId);
+  setFiles(result.tracks);
+  setQueueIds(old=>{const kept=old.filter(id=>ids.has(id)),known=new Set(kept);return [...kept,...result.tracks.map(t=>t.id).filter(id=>!known.has(id))]});
+  setIndex(at>=0?at:0);
+  if(at<0&&currentId){
+   upNext.current=-1;activeTrackId.current=null;
+   decks.current.forEach(a=>{a.pause();a.removeAttribute('src');a.load()});
+   setSeconds(0);setDuration(0);setState('idle');
+  }
+ }
+ useEffect(()=>{
+  if(!streaming)return;
+  const onVisible=()=>{if(document.visibilityState==='visible'&&catalogLoadedAt.current&&Date.now()-catalogLoadedAt.current>15000)fetchCatalog(true)};
+  document.addEventListener('visibilitychange',onVisible);window.addEventListener('focus',onVisible);
+  return()=>{document.removeEventListener('visibilitychange',onVisible);window.removeEventListener('focus',onVisible)};
+ },[]);
  const reloadCatalog=()=>{if(streaming&&!latest.current.files.length)fetchCatalog()};
 
  const select=async(at,withFade=true)=>{
