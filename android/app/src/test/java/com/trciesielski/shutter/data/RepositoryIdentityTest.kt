@@ -27,16 +27,45 @@ class RepositoryIdentityTest {
         try {
             val library = LibraryRepository(db)
             val playlists = PlaylistRepository(db)
-            val track = Track("local:test", "Song", "Artist", "Album", Uri.parse("content://documents/song"), TrackSource.LOCAL, "audio/mpeg", 1000, null, null)
-            library.upsert(track)
-            library.upsert(track)
-            assertEquals(listOf("local:test"), library.tracks().map { it.id })
+            val uri = Uri.parse("content://documents/song")
+            val track = Track(LibraryRepository.localId(uri, 2048, 12345), "Song", "Artist", "Album", uri, TrackSource.LOCAL, "audio/mpeg", 1000, null, null)
+            library.upsert(track, 2048, 12345)
+            library.upsert(track, 2048, 12345)
+            assertEquals(listOf(track.id), library.tracks().map { it.id })
             playlists.upsert(PlaylistEntity("p", "Playlist"), listOf(track.id, "legacy-blob"), setOf("legacy-blob"))
             assertEquals(listOf(false, true), playlists.entries("p").map { it.orphaned })
             library.remove(track.id)
             library.remove(track.id)
             assertNull(library.resolve(track.id))
             assertEquals(listOf(track.id, "legacy-blob"), playlists.entries("p").map { it.trackId })
+        } finally { db.close() }
+    }
+
+    @Test fun localUpsertRejectsCallerIdentityThatDoesNotMatchDocumentMetadata() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), ShutterDatabase::class.java).allowMainThreadQueries().build()
+        try {
+            val library = LibraryRepository(db)
+            val uri = Uri.parse("content://documents/song")
+            val canonical = LibraryRepository.localId(uri, 2048, 12345)
+            val track = Track(canonical, "Song", "Artist", "Album", uri, TrackSource.LOCAL, "audio/mpeg", null, null, null)
+            library.upsert(track, 2048, 12345)
+            try {
+                library.upsert(track.copy(id = "local:arbitrary"), 2048, 12345)
+                fail("noncanonical local ID was accepted")
+            } catch (_: IllegalArgumentException) { }
+            assertEquals(listOf(canonical), library.tracks().map { it.id })
+        } finally { db.close() }
+    }
+
+    @Test fun playlistUpdatePreservesOrphanFlagsWhenCallerOmitsThem() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), ShutterDatabase::class.java).allowMainThreadQueries().build()
+        try {
+            val playlists = PlaylistRepository(db)
+            playlists.upsert(PlaylistEntity("p", "First"), listOf("legacy-blob", "online"), setOf("legacy-blob"))
+            playlists.upsert(PlaylistEntity("p", "Renamed"), listOf("online", "legacy-blob", "legacy-blob"))
+            assertEquals(listOf(false, true, true), playlists.entries("p").map { it.orphaned })
+            playlists.upsert(PlaylistEntity("p", "Explicit"), listOf("legacy-blob"), emptySet())
+            assertEquals(listOf(false), playlists.entries("p").map { it.orphaned })
         } finally { db.close() }
     }
 

@@ -10,6 +10,7 @@ class LibraryRepository(private val db: ShutterDatabase) {
     suspend fun upsert(track: Track, documentSize: Long? = null, documentModifiedMs: Long? = null) {
         require(track.id.isNotBlank())
         require((track.source == TrackSource.LOCAL && track.uri.scheme == "content") || (track.source == TrackSource.CATALOG && (track.uri.scheme == "https" || (track.uri.scheme == "http" && track.uri.host in setOf("localhost", "127.0.0.1", "[::1]")))))
+        if (track.source == TrackSource.LOCAL) require(track.id == localId(track.uri, documentSize, documentModifiedMs)) { "Local track ID must match its document URI and metadata" }
         db.withTransaction { db.trackDao().upsert(TrackEntity.from(track, documentSize, documentModifiedMs)) }
     }
     fun observeTracks(): Flow<List<Track>> = db.trackDao().observe().map { rows -> rows.map(TrackEntity::toTrack) }
