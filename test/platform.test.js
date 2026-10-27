@@ -42,7 +42,7 @@ test('web import restrictions are enforced in the engine and UI, not by CSS',asy
  assert.match(engine,/remove:capabilities\.localDelete\?remove:null/);
  assert.match(engine,/const importFiles=async list=>\{\n  if\(!capabilities\.localImport\)return;/);
  assert.match(engine,/if\(!capabilities\.localDelete\|\|busy\.current\)return;/);
- assert.match(main,/\{caps\.localImport\?<div className="local-import">/);
+ assert.match(main,/:caps\.localImport\?<div className="local-import">/);
  assert.equal((main.match(/type="file"/g)||[]).length,1,'only one import input exists and it is gated by caps.localImport');
  assert.match(row,/\{onRemove&&<>/);
  assert.doesNotMatch(main+engine,/onDrop|ondrop|dataTransfer/);

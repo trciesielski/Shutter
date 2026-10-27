@@ -45,3 +45,13 @@ test('web wrapper never calls native plugin',async()=>{
   await assert.rejects(media.play());
   assert.equal(called,false);
 });
+test('incomplete migration retains raw keys and retries despite an old marker',async()=>{
+ const data=new Map([['shutter-user-playlists-v1','raw'],['shutter-native-migration-v1','1']]);
+ const storage={getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};
+ let count=0;
+ const native={migrateWebStorage:async({payload})=>{assert.equal(payload['shutter-user-playlists-v1'],'raw');return ++count===1?{completed:false}:{alreadyCompleted:true}}};
+ assert.equal((await migrateLocalStorage(native,storage)).completed,false);
+ assert.equal(data.get('shutter-user-playlists-v1'),'raw');
+ assert.equal((await migrateLocalStorage(native,storage)).alreadyCompleted,true);
+ assert.equal(count,2);
+});

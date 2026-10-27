@@ -6,6 +6,7 @@ import {recordListen,readHistory,historyStats,clearHistory} from './listeningHis
 import {useEqualizer} from './useEqualizer.js';
 import {CAPABILITIES,isNativeAndroid} from '../platform.js';
 import {resolveCatalogConfig,loadCatalog,browserCanPlay} from '../catalog/catalog.js';
+import {useNativeAudioEngine} from './useNativeAudioEngine.js';
 
 const AUDIO_EXT=/\.(mp3|wav|ogg|m4a|aac|flac|opus)$/i;
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
@@ -14,10 +15,13 @@ const fadeKey='shutter-crossfade-v1';
 function persisted(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}}
 const catalogConfig=()=>resolveCatalogConfig(import.meta.env||{});
 
-export function useAudioEngine({capabilities:configuredCapabilities=CAPABILITIES}={}){
- const nativeAndroid=isNativeAndroid();
- // Task 6 will replace this handoff with a MediaController-backed hook.
- const capabilities=nativeAndroid?{...configuredCapabilities,publicCatalog:false,localImport:false,localDelete:false,localPersistence:false}:configuredCapabilities;
+export function useAudioEngine(options={}){
+ return isNativeAndroid()?useNativeAudioEngine():useWebAudioEngine(options);
+}
+
+function useWebAudioEngine({capabilities:configuredCapabilities=CAPABILITIES}={}){
+ const nativeAndroid=false;
+ const capabilities=configuredCapabilities;
  const streaming=capabilities.publicCatalog;
  const decks=useRef([]),activeDeck=useRef(0),urls=useRef([]),latest=useRef({});
  const change=useRef(null),busy=useRef(false),fadeTimer=useRef(null),recorded=useRef(null),activeTrackId=useRef(null),supportsDsp=useRef(false),upNext=useRef(-1),unshuffledOrder=useRef(null);
@@ -202,7 +206,7 @@ export function useAudioEngine({capabilities:configuredCapabilities=CAPABILITIES
   return()=>{for(const key of Object.keys(handlers))try{navigator.mediaSession.setActionHandler(key,null)}catch{}};
  },[nativeAndroid,files,index,state,shuffle,repeat,queueIds]);
 
- return {files,index,state,seconds,duration,volume,error,eq,capabilities,catalog,reloadCatalog,nativePlaybackPending:nativeAndroid,
+ return {files,index,state,seconds,duration,volume,error,eq,capabilities,catalog,reloadCatalog,
  importFiles:capabilities.localImport?importFiles:null,remove:capabilities.localDelete?remove:null,select,toggle,stop,seek,setGain,next,prev,
  queueIds,loadQueue,move,addNext,shuffle,toggleShuffle,repeat,cycleRepeat,transition,setTransition,
  history,historyStats:historyStats(history),clearPlays};
