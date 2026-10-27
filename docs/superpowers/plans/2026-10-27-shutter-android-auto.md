@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Pracować wyłącznie na `feature/shutter-android-auto`; nie tworzyć worktree i nie modyfikować `main`.
-- `com.trciesielski.shutter`, `minSdk 26`, priorytet Android Auto przez projekcję telefonu; Android Automotive OS poza zakresem.
+- `com.trciesielski.shutter`, `minSdk 26`; `phoneAuto` covers phone/projection and the continuation plan `docs/superpowers/plans/2026-10-27-shutter-android-auto-aaos.md` adds the shared-code `automotive` AAOS artifact.
 - `https://shutter-web-6p2.pages.dev` jest stagingowym base URL: `/music/catalog/catalog.json` i `/music/*`; produkcja ma być konfigurowalna jako `https://music.madebyform.work`.
 - `MediaLibraryService`/Media3 jest jedynym silnikiem audio Androida; w natywnym trybie React nie może tworzyć `HTMLAudioElement` ani Web Audio graphu.
 - Nie migrować Blob-ów z IndexedDB; scalar state z `localStorage` migrować jednokrotnie, idempotentnie i bez utraty/duplikatów.

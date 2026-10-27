@@ -223,8 +223,9 @@ konkretnej funkcji, UI pokaże ograniczenie zamiast uruchamiać Web Audio.
 - build/debug APK, jeśli SDK i build tools będą dostępne.
 
 Parametry aplikacji: package/application ID `com.trciesielski.shutter`,
-`minSdk 26`, priorytet Android Auto przez projekcję telefonu. Android
-Automotive OS i release signing są poza zakresem tej wersji.
+`minSdk 26`, priorytet Android Auto przez projekcję telefonu. Release signing
+pozostaje poza zakresem tej wersji; obsługa AAOS jest dostarczana przez osobny
+wariant `automotive` opisany w addendum poniżej.
 
 ### Etap 2 — most i pełny interfejs React
 
@@ -283,9 +284,39 @@ zweryfikowany kod/build/testy JVM od niezweryfikowanej integracji samochodowej.
 
 ## Decyzja projektowa
 
-Implementować wariant A etapami. Najpierw działający Media3/Android Auto
+Implementować wariant A etapami, z product flavors `phoneAuto` i `automotive`.
+Najpierw działający Media3/Android Auto
 fundament i testowalny serwis, następnie adapter Capacitor i pełna synchronizacja
 istniejącego React UI. Przyjąć `minSdk 26`, package ID
 `com.trciesielski.shutter`, projekcję Android Auto, staging URL wskazany wyżej
 oraz jednorazową migrację danych scalar z `localStorage`, bez Blob-ów. Nie
 zmieniać trybu webowego poza neutralnym kodem wykrywającym natywny adapter.
+
+## Addendum — trzy platformy Android
+
+Zakres został rozszerzony o trzy cele dostarczane z jednego współdzielonego
+silnika:
+
+| Cel | Artefakt | Interfejs użytkownika | Źródło sterowania |
+|---|---|---|---|
+| Android telefon | wariant `phoneAuto` | istniejący React przez Capacitor | React → `ShutterMedia` → `MediaController` |
+| Android Auto projection | wariant `phoneAuto` | standardowy host Android Auto | `MediaLibrarySession` |
+| Android Automotive OS | wariant `automotive` | systemowy host AAOS | `MediaLibrarySession` |
+
+`phoneAuto` i `automotive` współdzielą kod Kotlin, Room, SAF, katalog, mapper
+Media3, `ShutterMediaLibraryService` i plugin. Różnice platformowe są
+ograniczone do manifestów, deklaracji urządzenia i konfiguracji Gradle:
+
+- `phoneAuto` deklaruje `com.google.android.gms.car.application` z descriptor
+  `media` i pozostaje instalowalny na zwykłym telefonie;
+- `automotive` deklaruje `android.hardware.type.automotive` jako wymagane dla
+  osobnego artefaktu AAOS, bez kopiowania serwisu ani playera;
+- oba warianty rejestrują tę samą usługę Media3 i używają tego samego
+  `MediaLibrarySession`; wariant AAOS nie renderuje Reacta w ekranie samochodu;
+- identyfikator aplikacji i `minSdk 26` pozostają wspólne, a staging/production
+  URL nadal są konfigurowalne przez BuildConfig.
+
+Manifest merge dla każdego wariantu musi być sprawdzony testem/buildem. Brak
+emulatora AAOS nie pozwala potwierdzić instalacji, odkrywania źródła ani UX na
+realnym systemie samochodowym; takie wyniki muszą być raportowane osobno od
+kompilacji i testów JVM.
