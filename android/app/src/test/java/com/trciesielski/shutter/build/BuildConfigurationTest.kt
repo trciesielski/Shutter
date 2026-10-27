@@ -18,10 +18,19 @@ class BuildConfigurationTest {
     }
 
     @Test
-    fun stagingUrlsAreAvailableToNativeCode() {
-        assertEquals("https://shutter-web-6p2.pages.dev/music/", BuildConfig.SHUTTER_MUSIC_BASE_URL)
+    fun configuredUrlsAreAvailableToNativeCode() {
+        val musicBaseOverride = System.getProperty("shutter.musicBaseOverride").orEmpty()
+        val catalogOverride = System.getProperty("shutter.catalogOverride").orEmpty()
+        val expectedMusicBase = musicBaseOverride.ifEmpty {
+            "https://shutter-web-6p2.pages.dev/music/"
+        }
+        val expectedCatalog = catalogOverride.ifEmpty {
+            "${expectedMusicBase.trimEnd('/')}/catalog/catalog.json"
+        }
+
+        assertEquals(expectedMusicBase, BuildConfig.SHUTTER_MUSIC_BASE_URL)
         assertEquals(
-            "https://shutter-web-6p2.pages.dev/music/catalog/catalog.json",
+            expectedCatalog,
             BuildConfig.SHUTTER_CATALOG_URL,
         )
     }

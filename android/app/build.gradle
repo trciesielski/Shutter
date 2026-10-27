@@ -3,13 +3,15 @@ apply plugin: 'org.jetbrains.kotlin.android'
 apply plugin: 'org.jetbrains.kotlin.kapt'
 
 def stagingMusicBaseUrl = 'https://shutter-web-6p2.pages.dev/music/'
-def musicBaseUrl = (gradle.startParameter.projectProperties['SHUTTER_MUSIC_BASE_URL']
+def musicBaseOverride = gradle.startParameter.projectProperties['SHUTTER_MUSIC_BASE_URL']
         ?: System.getenv('SHUTTER_MUSIC_BASE_URL')
+def catalogOverride = gradle.startParameter.projectProperties['SHUTTER_CATALOG_URL']
+        ?: System.getenv('SHUTTER_CATALOG_URL')
+def musicBaseUrl = (musicBaseOverride
         ?: findProperty('SHUTTER_MUSIC_BASE_URL')
         ?: stagingMusicBaseUrl).toString()
-def catalogUrl = (gradle.startParameter.projectProperties['SHUTTER_CATALOG_URL']
-        ?: System.getenv('SHUTTER_CATALOG_URL')
-        ?: "${musicBaseUrl.replaceAll('/?$', '/')}catalog/catalog.json").toString()
+def catalogUrl = (catalogOverride
+        ?: "${musicBaseUrl.replaceAll('/+$', '')}/catalog/catalog.json").toString()
 
 android {
     namespace = "com.trciesielski.shutter"
@@ -43,6 +45,10 @@ android {
     }
     testOptions {
         unitTests.includeAndroidResources = true
+        unitTests.all {
+            systemProperty 'shutter.musicBaseOverride', musicBaseOverride ?: ''
+            systemProperty 'shutter.catalogOverride', catalogOverride ?: ''
+        }
     }
 }
 

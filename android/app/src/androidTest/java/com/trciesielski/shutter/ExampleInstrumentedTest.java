@@ -1,4 +1,4 @@
-package com.getcapacitor.myapp;
+package com.trciesielski.shutter;
 
 import static org.junit.Assert.*;
 
@@ -21,6 +21,14 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
-        assertEquals("com.getcapacitor.app", appContext.getPackageName());
+        assertEquals("com.trciesielski.shutter", appContext.getPackageName());
+    }
+
+    @Test
+    public void appThemeColorsResolve() {
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        appContext.getColor(R.color.colorPrimary);
+        appContext.getColor(R.color.colorPrimaryDark);
+        appContext.getColor(R.color.colorAccent);
     }
 }
