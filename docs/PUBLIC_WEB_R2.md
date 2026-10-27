@@ -29,10 +29,10 @@ przeglądarka ──GET/HEAD──> https://<domena>/music/<klucz>   (Cloudflare
 - `Range` (`bytes=a-b`, `bytes=a-`, `bytes=-n`) → `206` + `Content-Range`; poza zakresem → `416`. `Accept-Ranges: bytes`, `ETag`, `If-None-Match` → `304`.
 - Typy: mp3, m4a/aac, ogg/opus, wav, flac, webm; okładki jpg/png/webp/avif/gif; `catalog/*.json`. SVG/HTML nie są serwowane. `X-Content-Type-Options: nosniff`.
 - Brak bindingu → `503 {"error":"music_storage_not_configured"}` (strona dalej działa i pokazuje błąd katalogu).
-- `/_routes.json` ogranicza wywołania Functions do `/music/*`; reszta to statyczne pliki.
+- `/_routes.json` ogranicza wywołania Functions do `/music/*`, `/admin`, `/admin/*` i `/api/admin/*`; reszta to statyczne pliki.
 - Ten sam origin: bez CORS, a equalizer/wizualizer (Web Audio) działają na strumieniu.
 
-Credentiale R2 nie występują w kodzie ani w bundlu. Upload/edycja katalogu odbywa się poza aplikacją (panel Cloudflare, `wrangler r2 object put --remote`, rclone/S3 z kluczami administratora).
+Credentiale R2 nie występują w kodzie ani w bundlu. Zarządzanie katalogiem odbywa się w SHUTTER ADMIN (`/admin`, Cloudflare Access) — patrz `docs/SHUTTER_ADMIN.md`. Alternatywnie poza aplikacją: panel Cloudflare, `wrangler r2 object put --remote`, rclone/S3 z kluczami administratora.
 
 ## Wymagana konfiguracja Cloudflare (ręcznie, nie wykonano z tej sesji)
 

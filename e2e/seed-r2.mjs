@@ -11,6 +11,11 @@ const ff=(...args)=>execFileSync('ffmpeg',['-loglevel','error','-y',...args]);
 ff('-f','lavfi','-i','sine=frequency=440:duration=20','-b:a','64k',join(dir,'a.mp3'));
 ff('-f','lavfi','-i','sine=frequency=660:duration=20','-b:a','64k',join(dir,'b.mp3'));
 ff('-f','lavfi','-i','color=c=red:s=64x64','-frames:v','1',join(dir,'c.jpg'));
+// Admin upload fixtures (not stored in R2): ID3v2.3 tags with Polish characters and embedded artwork,
+// plus a JPEG disguised as .mp3 for the spoofing check.
+ff('-f','lavfi','-i','color=c=blue:s=600x600','-frames:v','1',join(dir,'art.jpg'));
+ff('-f','lavfi','-i','sine=frequency=550:duration=12','-i',join(dir,'art.jpg'),'-map','0:a','-map','1:v','-c:a','libmp3lame','-b:a','64k','-c:v','copy','-id3v2_version','3','-metadata','title=Zażółć gęślą jaźń','-metadata','artist=Łódzki Kwartet','-metadata','album=Ćwiczenia','-metadata','genre=Jazz','-metadata','date=2024','-metadata','track=3','-disposition:v','attached_pic',join(dir,'tagged.mp3'));
+writeFileSync(join(dir,'fake.mp3'),readFileSync(join(dir,'c.jpg')));
 const catalog={version:1,title:'SHUTTER',tracks:[
  {id:'t1',title:'Sine A',artist:'Test Artist',album:'E2E',audio:'tracks/a.mp3',cover:'covers/c.jpg',order:1},
  {id:'t2',title:'Sine B',artist:'Test Artist',audio:'tracks/b.mp3',order:2},

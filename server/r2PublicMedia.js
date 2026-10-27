@@ -45,7 +45,7 @@ function baseHeaders(key,object){
  const headers=new Headers({
   'Content-Type':CONTENT_TYPES[ext],
   'Accept-Ranges':'bytes',
-  'Cache-Control':key.startsWith('catalog/')?'public, max-age=60, must-revalidate':'public, max-age=86400',
+  'Cache-Control':key.startsWith('catalog/')?'no-cache':'public, max-age=86400',
   'X-Content-Type-Options':'nosniff',
   'Content-Security-Policy':"default-src 'none'; sandbox",
   'Referrer-Policy':'no-referrer'

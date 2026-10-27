@@ -31,7 +31,7 @@ test('full GET serves audio with correct type and range support',async()=>{
  assert.equal((await res.arrayBuffer()).byteLength,100);
  const json=await call('GET',['catalog','catalog.json']);
  assert.equal(json.headers.get('Content-Type'),'application/json; charset=utf-8');
- assert.match(json.headers.get('Cache-Control'),/max-age=60/);
+ assert.equal(json.headers.get('Cache-Control'),'no-cache');
  assert.equal((await call('GET',['covers','c.jpg'])).headers.get('Content-Type'),'image/jpeg');
 });
 

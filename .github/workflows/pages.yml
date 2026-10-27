@@ -23,7 +23,10 @@ jobs:
       - name: Audio regression tests
         run: npm test
       - name: Build preview
+        # GitHub Pages has no Functions, so the Access-protected admin panel is not built there.
         run: npm run build -- --base=/Shutter/
+        env:
+          SHUTTER_BUILD_ADMIN: '0'
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
