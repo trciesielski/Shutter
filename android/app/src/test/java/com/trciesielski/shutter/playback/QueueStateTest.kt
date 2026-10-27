@@ -6,6 +6,13 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.trciesielski.shutter.data.ShutterDatabase
+import com.trciesielski.shutter.data.LibraryRepository
+import com.trciesielski.shutter.data.PlaylistRepository
+import com.trciesielski.shutter.data.Track
+import com.trciesielski.shutter.data.TrackSource
+import com.trciesielski.shutter.data.PlaybackStateEntity
+import com.trciesielski.shutter.data.CatalogSnapshot
+import android.net.Uri
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -84,5 +91,65 @@ class QueueStateTest {
             assertEquals("b", db.stateDao().playback()!!.trackId)
             assertEquals(3500L, db.stateDao().playback()!!.positionMs)
         } finally { db.close() }
+    }
+
+    @Test fun positionAdvanceWithoutPlayerEventGetsNewRevisionAndPersists() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), ShutterDatabase::class.java).build()
+        try {
+            val fake = FakePlayer()
+            val store = PlaybackStateStore(fake.player)
+            val first = store.snapshot()
+            store.savePosition(db, first)
+            fake.position = 6200
+            val tick = store.snapshot()
+            store.savePosition(db, tick)
+            assertTrue(tick.revision > first.revision)
+            assertEquals(6200L, db.stateDao().playback()!!.positionMs)
+        } finally { db.close() }
+    }
+
+    @Test fun restoreDoesNotApplyMissingTracksPositionToAnotherTrack() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val db = Room.inMemoryDatabaseBuilder(context, ShutterDatabase::class.java).build()
+        try {
+            val uri = Uri.parse("content://documents/resume-track")
+            val id = LibraryRepository.localId(uri, null, null)
+            LibraryRepository(db).upsert(Track(id, "Present", "Artist", "Album", uri, TrackSource.LOCAL, "audio/mpeg", 10_000, null, null))
+            context.getSharedPreferences("shutter_playback", Context.MODE_PRIVATE).edit()
+                .putString("queue", org.json.JSONArray(listOf(id)).toString()).commit()
+            db.stateDao().upsertPlayback(PlaybackStateEntity(trackId = "removed", positionMs = 7000, updatedAtMs = 1))
+            val tree = BrowseTree(LibraryRepository(db), PlaylistRepository(db)) { error("No catalog needed") }
+            val restored = PlaybackStateStore(FakePlayer().player).restore(context, db, tree)!!
+            assertEquals(listOf(id), restored.queue.map { it.mediaId })
+            assertEquals(0, restored.index)
+            assertEquals(0L, restored.positionMs)
+        } finally {
+            context.getSharedPreferences("shutter_playback", Context.MODE_PRIVATE).edit().clear().commit()
+            db.close()
+        }
+    }
+
+    @Test fun restoreKeepsSelectedOccurrenceOfDuplicateTrack() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val db = Room.inMemoryDatabaseBuilder(context, ShutterDatabase::class.java).build()
+        try {
+            val fake = FakePlayer()
+            fake.queue[1] = fake.queue[0]
+            fake.index = 1
+            fake.position = 3200
+            val store = PlaybackStateStore(fake.player)
+            val snapshot = store.snapshot()
+            store.saveQueue(context, snapshot)
+            store.savePosition(db, snapshot)
+            val track = Track("a", "Duplicate", "Artist", "Album", Uri.parse("https://example.com/a.mp3"), TrackSource.CATALOG, "audio/mpeg", 9000, null, null)
+            val tree = BrowseTree(LibraryRepository(db), PlaylistRepository(db)) { Result.success(CatalogSnapshot(null, listOf(track), emptyList())) }
+            val restored = store.restore(context, db, tree)!!
+            assertEquals(listOf("a", "a"), restored.queue.map { it.mediaId })
+            assertEquals(1, restored.index)
+            assertEquals(3200L, restored.positionMs)
+        } finally {
+            context.getSharedPreferences("shutter_playback", Context.MODE_PRIVATE).edit().clear().commit()
+            db.close()
+        }
     }
 }

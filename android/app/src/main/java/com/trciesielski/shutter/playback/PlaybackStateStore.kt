@@ -57,6 +57,7 @@ class PlaybackStateStore(private val player: Player) {
     fun saveQueue(context: Context, snapshot: PlaybackSnapshot) {
         context.getSharedPreferences("shutter_playback", Context.MODE_PRIVATE).edit()
             .putString("queue", JSONArray(snapshot.queue).toString())
+            .putInt("queueIndex", player.currentMediaItemIndex)
             .putBoolean("shuffle", snapshot.shuffle)
             .putInt("repeat", snapshot.repeat)
             .apply()
@@ -84,8 +85,11 @@ class PlaybackStateStore(private val player: Player) {
         val queue = ids.mapNotNull { tree.item(it)?.takeIf { item -> item.mediaMetadata.isPlayable == true } }
             .ifEmpty { listOfNotNull(saved.trackId?.let { tree.item(it) }?.takeIf { it.mediaMetadata.isPlayable == true }) }
         if (queue.isEmpty()) return null
-        val index = queue.indexOfFirst { it.mediaId == saved.trackId }.coerceAtLeast(0)
-        return RestoredPlayback(queue, index, clampSeek(saved.positionMs, queue[index].mediaMetadata.durationMs ?: -1),
+        val savedIndex = queue.indexOfFirst { it.mediaId == saved.trackId }
+        val preferredIndex = prefs.getInt("queueIndex", -1).takeIf { it in queue.indices && queue[it].mediaId == saved.trackId }
+        val index = preferredIndex ?: savedIndex.coerceAtLeast(0)
+        val positionMs = if (savedIndex < 0) 0 else clampSeek(saved.positionMs, queue[index].mediaMetadata.durationMs ?: -1)
+        return RestoredPlayback(queue, index, positionMs,
             prefs.getBoolean("shuffle", false), prefs.getInt("repeat", Player.REPEAT_MODE_OFF).takeIf { it in 0..2 } ?: Player.REPEAT_MODE_OFF)
     }
 

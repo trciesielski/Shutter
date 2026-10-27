@@ -13,6 +13,7 @@ import com.google.common.util.concurrent.SettableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Library commands resolve trusted IDs; standard transport commands are handled by Media3. */
 class MediaSessionCallback(private val tree: BrowseTree, private val scope: CoroutineScope) : MediaLibraryService.MediaLibrarySession.Callback {
@@ -49,7 +50,11 @@ class MediaSessionCallback(private val tree: BrowseTree, private val scope: Coro
         browser: MediaSession.ControllerInfo,
         query: String,
         params: MediaLibraryService.LibraryParams?
-    ): ListenableFuture<LibraryResult<Void>> = Futures.immediateFuture(LibraryResult.ofVoid(params))
+    ): ListenableFuture<LibraryResult<Void>> = async {
+        val count = tree.search(query).size
+        withContext(Dispatchers.Main) { session.notifySearchResultChanged(browser, query, count, params) }
+        LibraryResult.ofVoid(params)
+    }
 
     override fun onGetSearchResult(
         session: MediaLibraryService.MediaLibrarySession,

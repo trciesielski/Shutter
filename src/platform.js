@@ -1,5 +1,11 @@
 // Single source of truth for platform-specific behaviour.
 // Anything other than an explicit "mobile" build is treated as the public, read-only web player.
+import {Capacitor} from '@capacitor/core';
+
+export function isNativeAndroid(runtime=Capacitor){
+ return Boolean(runtime?.isNativePlatform?.()&&runtime?.getPlatform?.()==='android');
+}
+
 export const PLATFORMS=Object.freeze(['web','mobile']);
 
 export function resolvePlatform(value){

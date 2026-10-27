@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {resolvePlatform,platformCapabilities,PLATFORM,CAPABILITIES} from '../src/platform.js';
+import {resolvePlatform,platformCapabilities,isNativeAndroid,PLATFORM,CAPABILITIES} from '../src/platform.js';
 
 const read=path=>readFile(new URL(path,import.meta.url),'utf8');
 
@@ -25,6 +25,13 @@ test('mobile capabilities preserve local import, deletion and IndexedDB library'
  assert.match(await read('../.env.mobile'),/^VITE_PLATFORM=mobile$/m);
  const pkg=JSON.parse(await read('../package.json'));
  assert.match(pkg.scripts['build:mobile'],/--mode mobile/);
+});
+
+test('only a native Android Capacitor runtime disables the web audio engine',()=>{
+ assert.equal(isNativeAndroid({isNativePlatform:()=>true,getPlatform:()=> 'android'}),true);
+ assert.equal(isNativeAndroid({isNativePlatform:()=>false,getPlatform:()=> 'android'}),false);
+ assert.equal(isNativeAndroid({isNativePlatform:()=>true,getPlatform:()=> 'ios'}),false);
+ assert.equal(isNativeAndroid({isNativePlatform:()=>false,getPlatform:()=> 'web'}),false);
 });
 
 test('web import restrictions are enforced in the engine and UI, not by CSS',async()=>{

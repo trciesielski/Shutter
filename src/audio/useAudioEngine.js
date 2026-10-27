@@ -4,7 +4,7 @@ import {extractMetadata} from './musicMetadata.js';
 import {nextIndex,previousIndex,reordered,shuffledQueue} from './queueLogic.js';
 import {recordListen,readHistory,historyStats,clearHistory} from './listeningHistory.js';
 import {useEqualizer} from './useEqualizer.js';
-import {CAPABILITIES} from '../platform.js';
+import {CAPABILITIES,isNativeAndroid} from '../platform.js';
 import {resolveCatalogConfig,loadCatalog,browserCanPlay} from '../catalog/catalog.js';
 
 const AUDIO_EXT=/\.(mp3|wav|ogg|m4a|aac|flac|opus)$/i;
@@ -14,11 +14,14 @@ const fadeKey='shutter-crossfade-v1';
 function persisted(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}}
 const catalogConfig=()=>resolveCatalogConfig(import.meta.env||{});
 
-export function useAudioEngine({capabilities=CAPABILITIES}={}){
+export function useAudioEngine({capabilities:configuredCapabilities=CAPABILITIES}={}){
+ const nativeAndroid=isNativeAndroid();
+ // Task 6 will replace this handoff with a MediaController-backed hook.
+ const capabilities=nativeAndroid?{...configuredCapabilities,publicCatalog:false,localImport:false,localDelete:false,localPersistence:false}:configuredCapabilities;
  const streaming=capabilities.publicCatalog;
  const decks=useRef([]),activeDeck=useRef(0),urls=useRef([]),latest=useRef({});
  const change=useRef(null),busy=useRef(false),fadeTimer=useRef(null),recorded=useRef(null),activeTrackId=useRef(null),supportsDsp=useRef(false),upNext=useRef(-1),unshuffledOrder=useRef(null);
- const eq=useEqualizer(decks);
+ const eq=useEqualizer(decks,!nativeAndroid);
  const [files,setFiles]=useState([]),[index,setIndex]=useState(0),[state,setState]=useState('idle');
  const [seconds,setSeconds]=useState(0),[duration,setDuration]=useState(0),[volume,setVolume]=useState(.7),[error,setError]=useState('');
  const [shuffle,setShuffle]=useState(false),[repeat,setRepeat]=useState('off'),[queueIds,setQueueIds]=useState([]);
@@ -38,6 +41,7 @@ export function useAudioEngine({capabilities=CAPABILITIES}={}){
  };
 
  useEffect(()=>{
+  if(nativeAndroid)return;
   const pair=[new Audio(),new Audio()];decks.current=pair;
   pair.forEach((a,i)=>{
    a.preload=streaming?'metadata':'auto';a.volume=.7;
@@ -75,7 +79,7 @@ export function useAudioEngine({capabilities=CAPABILITIES}={}){
    restorePosition(restored);
   }).catch(()=>{if(!disposed)setError('Nie można wczytać lokalnej biblioteki.')});
   return()=>{disposed=true;clearTimeout(fadeTimer.current);pair.forEach(a=>{a.pause();a.removeAttribute('src');a.load()});urls.current.forEach(URL.revokeObjectURL)};
- },[]);
+ },[nativeAndroid]);
 
  function restorePosition(list){
   const pair=decks.current,last=persisted(positionKey,null),idx=list.findIndex(f=>f.id===last?.id);
@@ -189,15 +193,16 @@ export function useAudioEngine({capabilities=CAPABILITIES}={}){
  const setTransition=v=>{const n=clamp(Number(v),0,12);setTransitionState(n);try{localStorage.setItem(fadeKey,JSON.stringify(n))}catch{}};
  const clearPlays=()=>{clearHistory();setHistory([])};
  useEffect(()=>{
+  if(nativeAndroid)return;
   if(!('mediaSession' in navigator)||!files[index]||typeof MediaMetadata==='undefined')return;
   const f=files[index];navigator.mediaSession.metadata=new MediaMetadata({title:f.title,artist:f.artist,album:f.album,...(f.coverUrl?{artwork:[{src:f.coverUrl}]}:{})});
   navigator.mediaSession.playbackState=state==='playing'?'playing':'paused';
   const handlers={play:()=>toggle(),pause:()=>current()?.pause(),nexttrack:()=>next(),previoustrack:()=>prev(),seekto:e=>{if(Number.isFinite(e.seekTime)&&current())current().currentTime=e.seekTime}};
   for(const [key,fn] of Object.entries(handlers))try{navigator.mediaSession.setActionHandler(key,fn)}catch{}
   return()=>{for(const key of Object.keys(handlers))try{navigator.mediaSession.setActionHandler(key,null)}catch{}};
- },[files,index,state,shuffle,repeat,queueIds]);
+ },[nativeAndroid,files,index,state,shuffle,repeat,queueIds]);
 
- return {files,index,state,seconds,duration,volume,error,eq,capabilities,catalog,reloadCatalog,
+ return {files,index,state,seconds,duration,volume,error,eq,capabilities,catalog,reloadCatalog,nativePlaybackPending:nativeAndroid,
  importFiles:capabilities.localImport?importFiles:null,remove:capabilities.localDelete?remove:null,select,toggle,stop,seek,setGain,next,prev,
  queueIds,loadQueue,move,addNext,shuffle,toggleShuffle,repeat,cycleRepeat,transition,setTransition,
  history,historyStats:historyStats(history),clearPlays};

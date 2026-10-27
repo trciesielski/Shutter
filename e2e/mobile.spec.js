@@ -22,3 +22,19 @@ test('mobile build keeps local import, playback and deletion',async({page})=>{
  await page.getByText('Usuń z biblioteki').click();
  await expect(play).toHaveCount(0);
 });
+
+test('native Android shell never constructs web audio players or graph',async({page})=>{
+ await page.addInitScript(()=>{
+  window.androidBridge={};
+  window.__webPlayers=0;window.__webContexts=0;
+  const OriginalAudio=window.Audio;
+  window.Audio=class extends OriginalAudio{constructor(...args){super(...args);window.__webPlayers++}};
+  const OriginalContext=window.AudioContext;
+  if(OriginalContext)window.AudioContext=class extends OriginalContext{constructor(...args){super(...args);window.__webContexts++}};
+ });
+ await page.goto('/');
+ await goLibrary(page);
+ await expect(page.locator('input[type=file]')).toHaveCount(0);
+ expect(await page.evaluate(()=>window.Capacitor.getPlatform())).toBe('android');
+ expect(await page.evaluate(()=>[window.__webPlayers,window.__webContexts])).toEqual([0,0]);
+});

@@ -19,6 +19,7 @@ class BrowseTree(
     private val loadCatalog: () -> Result<CatalogSnapshot> = { CatalogRepository().load() }
 ) {
     val rootId = "root"
+    private val reservedTrackIds = setOf(rootId, "catalog", "local", "playlists", "catalog:error")
     private var cachedCatalog: List<Track>? = null
 
     fun root(): MediaItem = node(rootId, "Shutter")
@@ -29,7 +30,7 @@ class BrowseTree(
             onSuccess = { tracks -> tracks.map(MediaItemMapper::toBrowseItem) },
             onFailure = { listOf(statusItem("catalog:error", "Catalog unavailable")) }
         )
-        "local" -> library.tracks().filter { it.source == TrackSource.LOCAL }.map(MediaItemMapper::toBrowseItem)
+        "local" -> library.tracks().filter { it.source == TrackSource.LOCAL && allowedTrackId(it.id) }.map(MediaItemMapper::toBrowseItem)
         "playlists" -> playlists.observePlaylists().first().map { node("playlist:${it.id}", it.name) }
         else -> if (parentId.startsWith("playlist:")) playlistItems(parentId.removePrefix("playlist:")) else emptyList()
     }
@@ -52,7 +53,7 @@ class BrowseTree(
         if (normalized.isEmpty()) return emptyList()
         val local = library.tracks()
         val catalog = catalogTracks().getOrDefault(emptyList())
-        return (catalog + local).distinctBy(Track::id)
+        return (catalog + local).filter { allowedTrackId(it.id) }.distinctBy(Track::id)
             .filter { it.title.contains(normalized, true) || it.artist.contains(normalized, true) || it.album.contains(normalized, true) }
             .map(MediaItemMapper::toBrowseItem)
     }
@@ -64,7 +65,7 @@ class BrowseTree(
             val index = entries.indexOfFirst { it.mediaId == mediaId }
             if (index < 0) return null
             val queue = entries.mapNotNull { entry ->
-                playlistEntry(entry.mediaId)?.second?.let { resolveTrack(it) }?.let(MediaItemMapper::toMediaItem)
+                playlistEntry(entry.mediaId)?.trackId?.let { resolveTrack(it) }?.let(MediaItemMapper::toMediaItem)
             }
             return queue to index
         }
@@ -81,29 +82,36 @@ class BrowseTree(
         return playlists.entries(id).filterNot { it.orphaned }.mapNotNull { entry ->
             resolveTrack(entry.trackId)?.let { track ->
                 MediaItemMapper.toBrowseItem(track).buildUpon()
-                    .setMediaId("playlist-entry:$encodedId:${track.id}").build()
+                    .setMediaId("playlist-entry:$encodedId:${entry.position}:${track.id}").build()
             }
         }
     }
 
-    private fun playlistEntry(mediaId: String): Pair<String, String>? {
+    private data class PlaylistEntryRef(val playlistId: String, val position: Int, val trackId: String)
+
+    private fun playlistEntry(mediaId: String): PlaylistEntryRef? {
         if (!mediaId.startsWith("playlist-entry:")) return null
         val suffix = mediaId.removePrefix("playlist-entry:")
         val encoded = suffix.substringBefore(':')
-        val trackId = suffix.substringAfter(':', "")
-        if (encoded.isBlank() || trackId.isBlank()) return null
-        return try { String(Base64.getUrlDecoder().decode(encoded), Charsets.UTF_8) to trackId }
+        val position = suffix.substringAfter(':', "").substringBefore(':').toIntOrNull()
+        val trackId = suffix.substringAfter(':', "").substringAfter(':', "")
+        if (encoded.isBlank() || position == null || position < 0 || trackId.isBlank()) return null
+        return try { PlaylistEntryRef(String(Base64.getUrlDecoder().decode(encoded), Charsets.UTF_8), position, trackId) }
         catch (_: IllegalArgumentException) { null }
     }
 
     private suspend fun resolveTrack(id: String): Track? {
+        if (!allowedTrackId(id)) return null
         library.resolve(id)?.let { return it }
         return catalogTracks().getOrDefault(emptyList()).firstOrNull { it.id == id }
     }
 
+    private fun allowedTrackId(id: String): Boolean = id !in reservedTrackIds &&
+        !id.startsWith("playlist:") && !id.startsWith("playlist-entry:")
+
     private fun catalogTracks(): Result<List<Track>> {
         cachedCatalog?.let { return Result.success(it) }
-        return loadCatalog().map { it.tracks.also { tracks -> cachedCatalog = tracks } }
+        return loadCatalog().map { snapshot -> snapshot.tracks.filter { allowedTrackId(it.id) }.also { cachedCatalog = it } }
     }
 
     private fun node(id: String, title: String): MediaItem = MediaItem.Builder().setMediaId(id)

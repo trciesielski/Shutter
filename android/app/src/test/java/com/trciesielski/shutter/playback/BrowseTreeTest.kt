@@ -69,4 +69,35 @@ class BrowseTreeTest {
             assertEquals(listOf("recovered"), tree.children("catalog").map { it.mediaId })
         } finally { db.close() }
     }
+
+    @Test fun duplicatePlaylistOccurrencesHaveDistinctBrowseIdsAndStartAtSelectedOccurrence() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), ShutterDatabase::class.java).build()
+        try {
+            val playlists = PlaylistRepository(db)
+            playlists.upsert(PlaylistEntity("mix", "Mix"), listOf("same", "same", "last"))
+            val tree = BrowseTree(LibraryRepository(db), playlists) {
+                Result.success(CatalogSnapshot(null, listOf(catalog("same"), catalog("last")), emptyList()))
+            }
+            val entries = tree.children("playlist:mix")
+            assertEquals(3, entries.size)
+            assertEquals(3, entries.map { it.mediaId }.toSet().size)
+            assertEquals(entries[1].mediaId, tree.item(entries[1].mediaId)?.mediaId)
+            val (queue, start) = tree.queueFor(entries[1].mediaId)!!
+            assertEquals(listOf("same", "same", "last"), queue.map { it.mediaId })
+            assertEquals(1, start)
+        } finally { db.close() }
+    }
+
+    @Test fun catalogTrackIdsCannotShadowBrowseNodes() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), ShutterDatabase::class.java).build()
+        try {
+            val tree = BrowseTree(LibraryRepository(db), PlaylistRepository(db)) {
+                Result.success(CatalogSnapshot(null, listOf("root", "catalog", "local", "playlists", "safe").map(::catalog), emptyList()))
+            }
+            assertEquals(listOf("safe"), tree.children("catalog").map { it.mediaId })
+            assertTrue(tree.item("catalog")!!.mediaMetadata.isBrowsable == true)
+            assertNull(tree.queueFor("root"))
+            assertNull(tree.queueFor("playlists"))
+        } finally { db.close() }
+    }
 }

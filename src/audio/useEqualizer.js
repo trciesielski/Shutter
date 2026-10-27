@@ -6,12 +6,13 @@ export const PRESETS={Flat:[0,0,0,0,0,0,0,0,0,0],Bass:[6,5,4,2,0,0,-1,-1,0,0],Ro
 const KEY='shutter-eq-v1';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,Number(v)||0));
 function stored(){try{const a=JSON.parse(localStorage.getItem(KEY)||'{}');return {enabled:a.enabled??true,gains:Array.isArray(a.gains)&&a.gains.length===10?a.gains.map(v=>clamp(v,-12,12)):[...PRESETS.Flat],preamp:clamp(a.preamp??-3,-12,6),preset:a.preset||'Flat',custom:a.custom&&typeof a.custom==='object'?a.custom:{}}}catch{return {enabled:true,gains:[...PRESETS.Flat],preamp:-3,preset:'Flat',custom:{}}}}
-export function useEqualizer(decks){
+export function useEqualizer(decks,enabled=true){
  const [settings,setSettings]=useState(stored),[ready,setReady]=useState(false);
  const [compare,setCompare]=useState(false),[autoProtect,setAutoProtect]=useState(true);
  const graph=useRef(null),[bins,setBins]=useState(Array(32).fill(0)),[signalStatus,setSignalStatus]=useState('inactive'),[signalDebug,setSignalDebug]=useState({rms:0,peak:0,context:'inactive'});
  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(settings))}catch{}},[settings]);
  const initialize=async()=>{
+  if(!enabled)return null;
   if(graph.current)return graph.current;
   const elements=decks.current;
   const Constructor=window.AudioContext||window.webkitAudioContext;
@@ -36,6 +37,7 @@ export function useEqualizer(decks){
  },[settings,compare,autoProtect]);
  const activate=async()=>{const g=await initialize();if(g){if(g.context.state==='suspended')await g.context.resume();const t=g.context.currentTime;const boost=Math.max(0,...settings.gains);const effective=autoProtect?Math.min(settings.preamp,-boost):settings.preamp;const on=settings.enabled&&!compare;g.preamp.gain.setValueAtTime(on?Math.pow(10,effective/20):1,t);g.filters.forEach((f,i)=>f.gain.setValueAtTime(on?settings.gains[i]:0,t))}return !!g};
  useEffect(()=>{
+  if(!enabled)return;
   let frame=0,last=0;
   const spectrum=new Uint8Array(1024),samples=new Float32Array(2048);
   const render=time=>{
@@ -58,7 +60,7 @@ export function useEqualizer(decks){
   };
   frame=requestAnimationFrame(render);
   return()=>{cancelAnimationFrame(frame);const g=graph.current;if(g){g.context.close().catch(()=>{});graph.current=null}};
- },[]);
+ },[enabled]);
  const setDeck=(i)=>{const g=graph.current;if(!g)return;const t=g.context.currentTime;g.deckGains.forEach((node,j)=>{node.gain.cancelScheduledValues(t);node.gain.setValueAtTime(i===j?1:0,t)})};
  const mixDecks=(from,to,seconds)=>{
   const g=graph.current;if(!g)return false;

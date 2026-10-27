@@ -15,6 +15,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -40,6 +42,15 @@ class ShutterMediaLibraryService : MediaLibraryService() {
                 scope.launch(Dispatchers.IO) { store.savePosition(database, snapshot) }
             }
         })
+        scope.launch {
+            while (isActive) {
+                delay(5_000)
+                if (player.isPlaying) {
+                    val snapshot = store.snapshot()
+                    withContext(Dispatchers.IO) { store.savePosition(database, snapshot) }
+                }
+            }
+        }
         val launchIntent = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
