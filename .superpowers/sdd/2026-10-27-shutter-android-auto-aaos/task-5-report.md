@@ -173,3 +173,62 @@ are **unverified**. No AAOS compatibility claim is made.
 
 Final commit SHA is returned with the handoff because the report itself is
 part of that commit.
+
+## Follow-up verification — 2026-10-27
+
+This section is an additive correction to the historical initial attempt above;
+the earlier missing-SDK result is retained unchanged. A later controller rerun
+used the requested writable Android SDK/JDK/Gradle locations and proxy/truststore:
+
+```text
+ANDROID SDK:    /tmp/shutter-task1-sdk
+JDK:            /tmp/shutter-jdk
+GRADLE_USER_HOME: /tmp/shutter-task1-gradle
+```
+
+With the proxy and truststore configured, the exact command was run from
+`android/`:
+
+```sh
+./gradlew :app:assemblePhoneAutoDebug :app:assembleAutomotiveDebug
+```
+
+Observed result: `BUILD SUCCESSFUL in 13s` (115 actionable tasks: 3
+executed, 112 up-to-date). This successful rerun corrects the earlier
+missing-SDK result for the APK build only; it does not change the historical
+results for host/device tests.
+
+Controller-provided APK evidence to carry forward:
+
+```text
+android/app/build/outputs/apk/phoneAuto/debug/app-phoneAuto-debug.apk
+  8,090,892 bytes
+  SHA-256 d9382d58cc91bd61ac642e299076f30ed8ea5326a6e3b9de7569444e09d01878
+
+android/app/build/outputs/apk/automotive/debug/app-automotive-debug.apk
+  8,090,591 bytes
+  SHA-256 99460a0256a34e25966d65448069a4457b409852948fd370655e52ddcce6fc58
+```
+
+The local post-rerun audit in this workspace confirmed the same byte sizes but
+returned different SHA-256 values (`88023f79a4b8c932897391586698795d37003dba00dd977136e7dd5d5d06147f`
+for `phoneAuto` and
+`7af8a626327d6914d31c77b362dc45dc5231d6a837df226a0814fbd93a06432`
+for `automotive`). Both sets are recorded explicitly because the APK bytes
+were rebuilt locally and the supplied controller hashes are not reproducible
+from that local post-build hash check.
+
+Merged manifest evidence from the successful rerun:
+
+- `phoneAutoDebug`: package `com.trciesielski.shutter`, min SDK 26, target SDK
+  36, one `ShutterMediaLibraryService`, and
+  `com.google.android.gms.car.application` referencing
+  `@xml/automotive_app_desc`.
+- `automotiveDebug`: package `com.trciesielski.shutter`, min SDK 26, target SDK
+  36, one `ShutterMediaLibraryService`, required
+  `android.hardware.type.automotive`, and `android:appCategory="audio"`.
+
+No physical Android phone, Android Auto projection/DHU, Android Auto emulator,
+AAOS emulator, or AAOS device host test was run during this follow-up. APK
+build and manifest evidence therefore do not establish phone, Android Auto, or
+AAOS compatibility; those host results remain **unverified**.
