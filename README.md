@@ -16,6 +16,7 @@ Responsive music player UI prototype (visual-first).
 - `npm test` – unit tests; `npm run test:e2e` – Playwright against `wrangler pages dev` with a local R2 bucket (needs `ffmpeg`).
 
 Setup, environment variables and the catalog JSON schema: [docs/PUBLIC_WEB_R2.md](docs/PUBLIC_WEB_R2.md).
+Android phone, Android Auto projection and AAOS setup: [docs/ANDROID.md](docs/ANDROID.md).
 
 ## Scope
 
