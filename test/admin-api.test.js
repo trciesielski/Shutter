@@ -322,3 +322,28 @@ test('upload sessions are bound to the administrator who created them',async()=>
  assert.equal((await call('PUT',`uploads/${sid}/parts/1`,undefined,{raw:MP3})).status,200,'owner still writes');
  await call('DELETE','uploads/'+sid);
 });
+
+test('shareUrl edge cases: bare scheme and non-URL strings are rejected',async()=>{
+ const cur=(await call('GET','catalog')).body;
+ for(const shareUrl of ['https://','https:/x','notaurl','HTTPS://ok.example/Ścieżka?q=żółć']){
+  const tracks=cur.catalog.tracks.map((t,i)=>i===0?{...t,shareUrl}:t);
+  const r=await call('PUT','catalog',{catalog:{...cur.catalog,tracks},etag:cur.etag});
+  if(shareUrl==='HTTPS://ok.example/Ścieżka?q=żółć'){assert.equal(r.status,200,shareUrl);assert.equal(r.body.catalog.tracks[0].shareUrl,shareUrl)}
+  else{assert.equal(r.status,422,shareUrl);assert.equal(r.body.errors[0].code,'invalid_share_url')}
+ }
+});
+
+test('permanent delete preserves catalog metadata and stays invisible to readers',async()=>{
+ const before=await bucket.get(CATALOG_KEY);
+ const beforeMeta=before.customMetadata;
+ const text=await before.text();
+ const up=await upload('audio','meta-check.mp3',MP3,'audio/mpeg');
+ assert.equal(up.status,200);
+ const del=await call('DELETE','objects',{key:up.body.key,confirm:up.body.key});
+ assert.equal(del.status,200);
+ const after=await bucket.get(CATALOG_KEY);
+ assert.deepEqual(after.customMetadata,beforeMeta,'publishedBy/reason preserved');
+ const strip=o=>{const{updatedAt,...rest}=o;return rest};
+ assert.deepEqual(strip(JSON.parse(await after.text())),strip(JSON.parse(text)),'catalog content identical apart from updatedAt');
+ assert.notEqual(after.etag,before.etag,'etag rotates so the CAS barrier serializes publishers');
+});

@@ -50,6 +50,10 @@ async function storage(bucket){
 //     references before the tombstone must CAS the same etag, so either it commits first (our
 //     commit fails, we abort) or we do (its CAS then fails);
 //  3. only then the object is deleted, and the tombstone is removed.
+// R2's ETag is a content hash: a byte-identical rewrite would leave the ETag unchanged and the CAS
+// would not serialize anything, so step 2 refreshes only `updatedAt` (the public player ignores it,
+// every other field is preserved verbatim). The rotation invalidates open drafts' ETags; the editor
+// recovers by re-fetching and retrying when content (minus updatedAt) is identical (AdminApp.jsx).
 // Residual: a first-ever catalog creation racing a delete cannot conflict on the etag (the key does
 // not exist yet); the re-read in step 2 catches a catalog committed after we started.
 async function deleteObject(bucket,body,actor){
@@ -66,7 +70,7 @@ async function deleteObject(bucket,body,actor){
   if(users?.length)throw new UploadError(409,'object_referenced',{tracks:users});
   if(!await bucket.head(key))throw new UploadError(404,'not_found');
   if(current.exists){
-   const pinned=await bucket.put(CATALOG_KEY,current.text,{onlyIf:{etagMatches:current.etag},httpMetadata:{contentType:'application/json; charset=utf-8',cacheControl:'no-cache'}});
+   const pinned=await bucket.put(CATALOG_KEY,JSON.stringify({...current.data,updatedAt:new Date().toISOString()}),{onlyIf:{etagMatches:current.etag},httpMetadata:{contentType:'application/json; charset=utf-8',cacheControl:'no-cache'},customMetadata:current.customMetadata||{}});
    if(!pinned)throw new UploadError(409,'catalog_changed');
   }
   await bucket.delete(key);

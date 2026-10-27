@@ -74,8 +74,10 @@ export function validateAdminCatalog(data){
   // shareUrl is part of the public catalog contract (exposed as publicUrl); validate it the same way
   // and carry it through so publishing never strips existing share links.
   if(t.shareUrl!==undefined&&t.shareUrl!==null&&t.shareUrl!==''){
-   if(typeof t.shareUrl==='string'&&/^https:\/\//i.test(t.shareUrl)&&t.shareUrl.length<=2048)out.shareUrl=cleanText(t.shareUrl,2048);
-   else err(index,id,'shareUrl','invalid_share_url');
+   const url=typeof t.shareUrl==='string'?cleanText(t.shareUrl,2048):null;
+   let valid=false;
+   if(url&&/^https:\/\//i.test(url)&&url.length<=2048){try{valid=new URL(url).protocol==='https:'}catch{}}
+   if(valid)out.shareUrl=url;else err(index,id,'shareUrl','invalid_share_url');
   }
   if(t.addedAt!==undefined&&t.addedAt!==null){if(typeof t.addedAt==='string'&&!Number.isNaN(Date.parse(t.addedAt))&&t.addedAt.length<=40)out.addedAt=t.addedAt;else err(index,id,'addedAt','invalid_date')}
   if(t.metadata&&typeof t.metadata==='object'&&!Array.isArray(t.metadata)){
@@ -112,7 +114,8 @@ export async function readCatalog(bucket){
  if(!obj)return {exists:false,etag:null,text:null,data:null,uploaded:null};
  const text=await obj.text();
  let data=null;try{data=JSON.parse(text)}catch{}
- return {exists:true,etag:obj.etag,text,data,uploaded:obj.uploaded instanceof Date?obj.uploaded.toISOString():null};
+ const meta=obj.customMetadata&&typeof obj.customMetadata==='object'?{...obj.customMetadata}:{};
+ return {exists:true,etag:obj.etag,text,data,uploaded:obj.uploaded instanceof Date?obj.uploaded.toISOString():null,customMetadata:meta};
 }
 
 // While an object is being permanently deleted, `admin/deletion/<key>` exists. Any publish that

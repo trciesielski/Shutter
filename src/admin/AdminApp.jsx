@@ -413,17 +413,33 @@ export default function AdminApp(){
   const local=clientValidate(draft);
   if(local.length){setErrors(local);showStatus('error','Popraw błędy przed publikacją.');return}
   setBusy(true);
-  try{
-   const tracks=draft.tracks.map((t,i)=>({...t,order:i+1}));
-   const r=await api('catalog',{method:'PUT',body:{catalog:{version:1,title:draft.title,tracks},etag:remote.etag}});
+  const tracks=draft.tracks.map((t,i)=>({...t,order:i+1}));
+  const finish=r=>{
    setRemote({exists:true,etag:r.etag,catalog:r.catalog,validation:[],updated:r.catalog.updatedAt});
    setDraft(toDraft(r.catalog));setErrors([]);
    showStatus('ok','Katalog opublikowany. Publiczny odtwarzacz wczyta nową wersję przy następnym odświeżeniu katalogu.');
    loadStorage();loadHistory();
+  };
+  try{
+   finish(await api('catalog',{method:'PUT',body:{catalog:{version:1,title:draft.title,tracks},etag:remote.etag}}));
   }catch(e){
-   if(e.code==='catalog_conflict')setConflict(true);
-   if(e.code==='catalog_invalid')setErrors(e.body.errors||[]);
-   showStatus('error',describe(e));
+   let error=e;
+   if(error.code==='catalog_conflict'){
+    // A permanent media delete serializes publishers by rewriting the catalog bytes (same content,
+    // new ETag). If the remote is still content-identical to our base, adopt its ETag and retry once
+    // instead of discarding the draft.
+    const fresh=await api('catalog').catch(()=>null);
+    const canon=o=>JSON.stringify(o&&{version:o.version,title:o.title,tracks:o.tracks});
+    if(fresh&&fresh.etag&&canon(fresh.catalog)===canon(remote.catalog)){
+     try{finish(await api('catalog',{method:'PUT',body:{catalog:{version:1,title:draft.title,tracks},etag:fresh.etag}}));error=null}
+     catch(retry){error=retry}
+    }
+   }
+   if(error){
+    if(error.code==='catalog_conflict')setConflict(true);
+    if(error.code==='catalog_invalid')setErrors(error.body.errors||[]);
+    showStatus('error',describe(error));
+   }
   }finally{setBusy(false)}
  }
  const discard=()=>setDialog({title:'Odrzucić nieopublikowane zmiany?',body:<p>Wersja robocza wróci do ostatnio opublikowanego katalogu. Wysłane pliki pozostaną w magazynie.</p>,danger:true,confirmLabel:'Odrzuć zmiany',onConfirm:()=>{setDraft(toDraft(remote.catalog));setErrors([])}});
