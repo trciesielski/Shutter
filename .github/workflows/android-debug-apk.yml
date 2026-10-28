@@ -9,7 +9,7 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,9 +41,32 @@ jobs:
           cd android
           chmod +x ./gradlew
           ./gradlew :app:assemblePhoneAutoDebug --stacktrace
+      - name: Prepare directly downloadable APK
+        shell: bash
+        run: |
+          shopt -s nullglob
+          apks=(android/app/build/outputs/apk/phoneAuto/debug/*.apk)
+          if [ "${#apks[@]}" -eq 0 ]; then
+            echo "::error::phoneAuto debug APK not found"
+            exit 1
+          fi
+          cp "${apks[0]}" "$RUNNER_TEMP/shutter-android-auto-debug.apk"
       - uses: actions/upload-artifact@v4
         with:
           name: shutter-android-auto-debug-apk
-          path: android/app/build/outputs/apk/phoneAuto/debug/*.apk
+          path: ${{ runner.temp }}/shutter-android-auto-debug.apk
           if-no-files-found: error
           retention-days: 14
+      - name: Publish APK as direct GitHub Release download
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK="$RUNNER_TEMP/shutter-android-auto-debug.apk"
+          TAG="android-auto-latest"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$APK" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "SHUTTER Android Auto - test APK" --notes "Automatycznie generowany testowy APK phoneAutoDebug. Nie jest to wersja produkcyjna." --prerelease
+          fi
+          echo "Direct APK: https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/shutter-android-auto-debug.apk" >> "$GITHUB_STEP_SUMMARY"
